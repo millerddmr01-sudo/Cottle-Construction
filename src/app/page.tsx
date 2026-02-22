@@ -29,7 +29,7 @@ export default function Home() {
             className="mb-8 w-full max-w-[600px] h-auto"
             priority
           />
-          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight">
+          <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight text-white">
             Building Infrastructure<br className="hidden md:inline" /><span className="text-primary">You Can Depend On</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
