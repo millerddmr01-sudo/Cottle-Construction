@@ -30,7 +30,7 @@ export default function Home() {
             priority
           />
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight text-white">
-            Building Infrastructure<br className="hidden md:inline" /><span className="text-primary">You Can Depend On</span>
+            Building Infrastructure<br /><span className="text-primary">You Can Depend On</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
             Specializing in high-pressure water supply lines, commercial excavation, and engineered solutions.
