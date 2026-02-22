@@ -22,7 +22,7 @@ export default function Home() {
 
         <div className="container mx-auto max-w-6xl relative z-10 flex flex-col items-center text-center">
           <Image
-            src="/HorizontalLogoLarge.png"
+            src="/HorizontalLogoLargeWhite.png"
             alt="Cottle Construction"
             width={600}
             height={150}
