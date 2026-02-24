@@ -1,0 +1,15 @@
+{
+  "profiles": [
+    {
+      "id": "0017de84-2305-48b6-9a4e-452af465600c",
+      "email": "amyc@cottleconstruction.com",
+      "role": "admin"
+    }
+  ],
+  "authUsers": [
+    {
+      "id": "0017de84-2305-48b6-9a4e-452af465600c",
+      "email": "amyc@cottleconstruction.com"
+    }
+  ]
+}

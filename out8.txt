@@ -1,0 +1,44 @@
+﻿
+> tempproj@0.1.0 dev
+> next dev
+
+node.exe : ΓÜá Port 
+3000 is in use by 
+process 53952, using 
+available port 3002 
+instead.
+At line:1 char:1
++ & "C:\Program 
+Files\nodejs/node.exe" 
+"C:\Program 
+Files\nodejs/node_mo 
+...
++ ~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~~~~~~~~~~~~~~~~~~~~~~
+~~
+    + CategoryInfo     
+         : NotSpecifi  
+  ed: (ΓÜá Port 3000   
+  i...t 3002 instea    
+d.:String) [], Rem    
+oteException
+    + FullyQualifiedEr 
+   rorId : NativeComm  
+  andError
+ 
+Γû▓ Next.js 16.1.6 (Turbopack)
+- Local:         http://localhost:3002
+- Network:       http://192.168.1.186:3002
+- Environments: .env.local
+
+Γ£ô Starting...
+Γ¿» Unable to acquire 
+lock at C:\Users\mille\
+OneDrive\Documents\Webs
+ite\cottle-construction
+\tempproj\.next\dev\loc
+k, is another instance 
+of next dev running?
+  Suggestion: If you intended to restart next dev, terminate the other process, and then try again.
+[?25h
