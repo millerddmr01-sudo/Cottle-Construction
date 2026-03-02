@@ -63,6 +63,16 @@ export default function AdminDashboardPage() {
                         <h3 className="font-bold text-gray-900 text-lg">Manage Employees</h3>
                         <p className="text-sm text-gray-500 text-center mt-1">Manage staff, roles, and certifications.</p>
                     </Link>
+                    <Link href="/admin/materials" className="bg-white rounded-xl shadow-sm border border-primary p-6 flex flex-col items-center justify-center min-h-[150px] hover:bg-primary/5 transition-colors group">
+                        <FileText size={32} className="text-secondary mb-3 group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-gray-900 text-lg">Manage Materials</h3>
+                        <p className="text-sm text-gray-500 text-center mt-1">Manage material catalog and base costs.</p>
+                    </Link>
+                    <Link href="/admin/equipment" className="bg-white rounded-xl shadow-sm border border-primary p-6 flex flex-col items-center justify-center min-h-[150px] hover:bg-primary/5 transition-colors group">
+                        <FileText size={32} className="text-primary mb-3 group-hover:scale-110 transition-transform" />
+                        <h3 className="font-bold text-gray-900 text-lg">Manage Equipment</h3>
+                        <p className="text-sm text-gray-500 text-center mt-1">Manage equipment catalog and vendors.</p>
+                    </Link>
                 </div>
             </div>
         </div>

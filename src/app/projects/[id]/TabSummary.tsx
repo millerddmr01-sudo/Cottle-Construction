@@ -81,14 +81,27 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
                             onChange={(e) => setStatus(e.target.value)}
                             className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white focus:ring-primary focus:border-primary shadow-sm"
                         >
-                            <option value="Planning & Estimate">Planning & Estimate</option>
-                            <option value="Bid Submitted">Bid Submitted</option>
-                            <option value="Approved">Approved</option>
-                            <option value="Pre-con">Pre-con</option>
-                            <option value="Job Kick-off">Job Kick-off</option>
-                            <option value="Post Project">Post Project</option>
-                            <option value="Invoice Submitted">Invoice Submitted</option>
-                            <option value="Paid">Paid</option>
+                            {project.project_type === 'service' ? (
+                                <>
+                                    <option value="Planning & Estimate">Planning & Estimate</option>
+                                    <option value="In progress">In progress</option>
+                                    <option value="Completed">Completed</option>
+                                    <option value="Ready for Billing">Ready for Billing</option>
+                                    <option value="Invoice Submitted">Invoice Submitted</option>
+                                    <option value="Paid">Paid</option>
+                                </>
+                            ) : (
+                                <>
+                                    <option value="Planning & Estimate">Planning & Estimate</option>
+                                    <option value="Bid Submitted">Bid Submitted</option>
+                                    <option value="Approved">Approved</option>
+                                    <option value="Pre-con">Pre-con</option>
+                                    <option value="Job Kick-off">Job Kick-off</option>
+                                    <option value="Post Project">Post Project</option>
+                                    <option value="Invoice Submitted">Invoice Submitted</option>
+                                    <option value="Paid">Paid</option>
+                                </>
+                            )}
                         </select>
                     ) : (
                         <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100 font-medium">

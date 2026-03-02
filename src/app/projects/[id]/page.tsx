@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter, useParams } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Loader2, Info, ListTodo, ClipboardEdit, Image as ImageIcon, Pencil, Check, X, LayoutDashboard, BarChart3, Layers, CheckSquare, FileText, Image } from "lucide-react";
+import { ChevronLeft, Loader2, Info, ListTodo, ClipboardEdit, Image as ImageIcon, Pencil, Check, X, LayoutDashboard, BarChart3, Layers, CheckSquare, FileText, Image, Receipt } from "lucide-react";
 
 import TabSummary from "./TabSummary";
 import TabOverview from "./TabOverview";
@@ -12,6 +12,7 @@ import TabChecklist from "./TabChecklist";
 import TabForemanDaily from "./TabForemanDaily";
 import TabGallery from "./TabGallery";
 import TabDocuments from "./TabDocuments";
+import TabServiceBilling from "./TabServiceBilling";
 
 export default function ProjectDashboardPage() {
     const router = useRouter();
@@ -23,7 +24,7 @@ export default function ProjectDashboardPage() {
     const [userId, setUserId] = useState<string | null>(null);
     const [project, setProject] = useState<any>(null);
     const [loading, setLoading] = useState(true);
-    const [activeTab, setActiveTab] = useState<"Summary" | "Scope & Details" | "Checklist" | "Daily Reports" | "Photos" | "Documents">("Summary");
+    const [activeTab, setActiveTab] = useState<"Summary" | "Scope & Details" | "Checklist" | "Daily Reports" | "Photos" | "Documents" | "Service Billing">("Summary");
 
     const [isEditingName, setIsEditingName] = useState(false);
     const [editNameValue, setEditNameValue] = useState("");
@@ -125,6 +126,9 @@ export default function ProjectDashboardPage() {
                                 </div>
                             ) : (
                                 <h1 className="text-3xl font-extrabold text-secondary mb-1 flex items-center gap-3">
+                                    <span className="font-mono text-xl font-bold text-gray-400 bg-gray-100/50 px-2 py-1 rounded-md border border-gray-200">
+                                        {project.job_number || 'NO-JOB-NO'}
+                                    </span>
                                     {project.project_name}
                                     {(userRole === 'admin' || userRole === 'foreman') && (
                                         <button
@@ -142,9 +146,9 @@ export default function ProjectDashboardPage() {
                             )}
                             <p className="text-gray-600 font-medium flex items-center gap-2">
                                 <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-bold uppercase tracking-wide
-                                    ${project.status === 'Pre-con' || project.status === 'Job Kick-off' || project.status === 'active' ? 'bg-blue-100 text-blue-800' :
-                                        project.status === 'Approved' || project.status === 'Paid' || project.status === 'completed' ? 'bg-green-100 text-green-800' :
-                                            project.status === 'Invoice Submitted' || project.status === 'Post Project' ? 'bg-purple-100 text-purple-800' :
+                                    ${project.status === 'Pre-con' || project.status === 'Job Kick-off' || project.status === 'active' || project.status === 'In progress' ? 'bg-blue-100 text-blue-800' :
+                                        project.status === 'Approved' || project.status === 'Paid' || project.status === 'completed' || project.status === 'Completed' ? 'bg-green-100 text-green-800' :
+                                            project.status === 'Invoice Submitted' || project.status === 'Post Project' || project.status === 'Ready for Billing' ? 'bg-purple-100 text-purple-800' :
                                                 project.status === 'Bid Submitted' ? 'bg-yellow-100 text-yellow-800' :
                                                     project.status === 'hold' ? 'bg-red-100 text-red-800' : 'bg-gray-200 text-gray-800'}`}
                                 >
@@ -160,7 +164,10 @@ export default function ProjectDashboardPage() {
                 <div className="w-full bg-white border-b border-gray-200">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                         <nav className="-mb-px flex space-x-1 sm:space-x-4">
-                            {["Summary", "Scope & Details", "Checklist", "Daily Reports", "Photos", "Documents"].map((tab) => (
+                            {[
+                                "Summary", "Scope & Details", "Checklist", "Daily Reports", "Photos", "Documents",
+                                ...(project.project_type === 'service' && (userRole === 'admin' || userRole === 'foreman') ? ["Service Billing"] : [])
+                            ].map((tab) => (
                                 <button
                                     key={tab}
                                     onClick={() => setActiveTab(tab as any)}
@@ -174,6 +181,7 @@ export default function ProjectDashboardPage() {
                                         {tab === "Daily Reports" && <FileText size={18} />}
                                         {tab === "Photos" && <Image size={18} />}
                                         {tab === "Documents" && <FileText size={18} />}
+                                        {tab === "Service Billing" && <Receipt size={18} />}
                                     </span>
                                     <span className="hidden sm:inline">{tab}</span>
                                 </button>
@@ -190,6 +198,7 @@ export default function ProjectDashboardPage() {
                     {activeTab === "Daily Reports" && (userRole === 'admin' || userRole === 'foreman') && <TabForemanDaily projectId={project.id} userRole={userRole!} userId={userId!} supabase={supabase} />}
                     {activeTab === "Photos" && <TabGallery projectId={project.id} userRole={userRole!} userId={userId!} supabase={supabase} />}
                     {activeTab === "Documents" && <TabDocuments projectId={project.id} userRole={userRole!} userId={userId!} supabase={supabase} />}
+                    {activeTab === "Service Billing" && (userRole === 'admin' || userRole === 'foreman') && <TabServiceBilling projectId={project.id} supabase={supabase} userRole={userRole} />}
                 </div>
 
             </div>

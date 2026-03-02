@@ -15,6 +15,7 @@ export default function ProjectsDirectory() {
     const [customers, setCustomers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
+    const [filterType, setFilterType] = useState<"all" | "project" | "bid" | "service">("all");
 
     // Create Project State
     const [isCreating, setIsCreating] = useState(false);
@@ -24,7 +25,8 @@ export default function ProjectsDirectory() {
         address: "",
         start_date: "",
         estimated_completion_date: "",
-        estimated_hours: ""
+        estimated_hours: "",
+        project_type: "project"
     });
 
     // New Customer State
@@ -115,6 +117,35 @@ export default function ProjectsDirectory() {
             }
         }
 
+        let customerInitials = "XX";
+        if (isNewCustomer && newCustomerData.full_name) {
+            const names = newCustomerData.full_name.trim().split(" ");
+            if (names.length >= 2) {
+                customerInitials = (names[0][0] + names[names.length - 1][0]).toUpperCase();
+            } else if (names[0]) {
+                customerInitials = names[0].substring(0, 2).toUpperCase();
+            }
+        } else if (finalCustomerId) {
+            const customer = customers.find(c => c.id === finalCustomerId);
+            if (customer) {
+                const nameToUse = customer.company_name || customer.full_name || "XX";
+                const names = nameToUse.trim().split(" ");
+                if (names.length >= 2) {
+                    customerInitials = (names[0][0] + names[names.length - 1][0]).toUpperCase();
+                } else if (names[0]) {
+                    customerInitials = names[0].substring(0, 2).toUpperCase();
+                }
+            }
+        }
+
+        let typeCode = "02";
+        if (newProject.project_type === "bid") typeCode = "01";
+        else if (newProject.project_type === "service") typeCode = "03";
+
+        const { count } = await supabase.from('projects').select('*', { count: 'exact', head: true });
+        const nextSequence = ((count || 0) + 1).toString().padStart(4, '0');
+        const generatedJobNumber = `${customerInitials}-${typeCode}-${nextSequence}`;
+
         const { data, error } = await supabase.from("projects").insert({
             project_name: newProject.project_name,
             customer_id: finalCustomerId || null,
@@ -122,6 +153,8 @@ export default function ProjectsDirectory() {
             start_date: newProject.start_date || null,
             estimated_completion_date: newProject.estimated_completion_date || null,
             estimated_hours: newProject.estimated_hours ? parseFloat(newProject.estimated_hours) : null,
+            project_type: newProject.project_type,
+            job_number: generatedJobNumber,
             status: 'planning'
         }).select().single();
 
@@ -129,16 +162,69 @@ export default function ProjectsDirectory() {
             alert("Error creating project: " + error.message);
             setIsCreating(false);
         } else {
+            // Auto-generate Post Project Default Checklist Items
+            try {
+                const { data: sectionData, error: sectionError } = await supabase.from("project_checklist_sections").insert({
+                    project_id: data.id,
+                    phase: 'post_project',
+                    title: 'Project Closeout',
+                    sort_order: 1,
+                    allowed_roles: ["admin", "foreman", "employee"]
+                }).select().single();
+
+                if (sectionData && !sectionError) {
+                    const defaultTasks = [
+                        "Statement of Work sent to customer",
+                        "All expenses have been added to project",
+                        "All employee hours have been added to project",
+                        "Invoice created and sent",
+                        "Customer follow-up"
+                    ];
+
+                    const tasksToInsert = defaultTasks.map((title, index) => ({
+                        project_id: data.id,
+                        section_id: sectionData.id,
+                        title,
+                        description: "",
+                        sort_order: index + 1,
+                        status: "pending",
+                        requires_picture: false,
+                        is_inspection: false
+                    }));
+
+                    await supabase.from("project_tasks").insert(tasksToInsert);
+                }
+            } catch (err) {
+                console.error("Failed to generate default checklist items:", err);
+            }
+
             router.push(`/projects/${data.id}`);
         }
     };
 
     const StatusBadge = ({ status }: { status: string }) => {
         switch (status) {
-            case 'active': return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"><Activity size={12} /> Active</span>;
-            case 'completed': return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><CheckCircle2 size={12} /> Completed</span>;
-            case 'hold': return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><PauseCircle size={12} /> On Hold</span>;
-            default: return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><Clock size={12} /> Planning</span>;
+            case 'active':
+            case 'In progress':
+            case 'Pre-con':
+            case 'Job Kick-off':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"><Activity size={12} /> {status === 'In progress' ? 'In Progress' : status === 'active' ? 'Active' : status}</span>;
+            case 'completed':
+            case 'Completed':
+            case 'Approved':
+            case 'Paid':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800"><CheckCircle2 size={12} /> {status === 'completed' || status === 'Completed' ? 'Completed' : status}</span>;
+            case 'hold':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800"><PauseCircle size={12} /> On Hold</span>;
+            case 'Ready for Billing':
+            case 'Invoice Submitted':
+            case 'Post Project':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-purple-100 text-purple-800"><Activity size={12} /> {status}</span>;
+            case 'Bid Submitted':
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800"><Activity size={12} /> {status}</span>;
+            case 'Planning & Estimate':
+            default:
+                return <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800"><Clock size={12} /> {status || 'Planning & Estimate'}</span>;
         }
     };
 
@@ -170,6 +256,8 @@ export default function ProjectsDirectory() {
         return <div className="p-12 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2" />Loading Projects Directory...</div>;
     }
 
+    const filteredProjects = projects.filter(p => filterType === "all" || p.project_type === filterType);
+
     return (
         <div className="min-h-screen bg-gray-50 pt-10 pb-20 px-4">
             <div className="container mx-auto max-w-6xl">
@@ -189,6 +277,14 @@ export default function ProjectsDirectory() {
                             <div className="lg:col-span-2">
                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Project Name <span className="text-red-500">*</span></label>
                                 <input type="text" required value={newProject.project_name} onChange={e => setNewProject({ ...newProject, project_name: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="e.g. Smith Residence Framing" />
+                            </div>
+                            <div className="lg:col-span-2">
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Project Type <span className="text-red-500">*</span></label>
+                                <select required value={newProject.project_type} onChange={e => setNewProject({ ...newProject, project_type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary">
+                                    <option value="bid">Bid</option>
+                                    <option value="project">Project</option>
+                                    <option value="service">Service</option>
+                                </select>
                             </div>
                             <div className="lg:col-span-2">
                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Job Site Address <span className="text-red-500">*</span></label>
@@ -242,15 +338,23 @@ export default function ProjectsDirectory() {
                     </div>
                 )}
 
+                {/* Filter Controls */}
+                <div className="flex flex-wrap gap-2 mb-6">
+                    <button onClick={() => setFilterType("all")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "all" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>All Projects</button>
+                    <button onClick={() => setFilterType("project")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "project" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Projects</button>
+                    <button onClick={() => setFilterType("bid")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "bid" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Bids</button>
+                    <button onClick={() => setFilterType("service")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "service" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Service Work</button>
+                </div>
+
                 {/* Projects Grid */}
-                {projects.length === 0 ? (
+                {filteredProjects.length === 0 ? (
                     <div className="p-12 text-center text-gray-500 bg-white rounded-xl shadow-sm border border-gray-200">
-                        No projects have been created yet.
+                        No projects found for this filter.
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                        {projects.map((project) => (
-                            <Link key={project.id} href={`/projects/${project.id}`} className="group bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-md hover:border-primary transition-all flex flex-col h-full">
+                        {filteredProjects.map((project) => (
+                            <Link key={project.id} href={`/projects/${project.id}`} className={`group bg-white rounded-xl shadow-sm border-2 ${project.project_type === 'service' ? 'border-red-500' : 'border-primary'} overflow-hidden hover:shadow-md transition-all flex flex-col h-full`}>
                                 <div className="p-6 flex-1">
                                     <div className="flex justify-between items-start mb-3">
                                         <StatusBadge status={project.status} />
@@ -268,7 +372,10 @@ export default function ProjectsDirectory() {
                                             <ChevronRight size={20} className="text-gray-300 group-hover:text-primary transition-colors" />
                                         </div>
                                     </div>
-                                    <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-2">{project.project_name}</h3>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <span className="font-mono text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded">{project.job_number || 'NO-JOB-NO'}</span>
+                                        <h3 className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors line-clamp-2">{project.project_name}</h3>
+                                    </div>
 
                                     {project.customer && (
                                         <p className="text-sm text-gray-500 font-medium mt-1">

@@ -42,11 +42,11 @@ export default function LoginPage() {
             console.log("LOGIN -> Profile Data:", profile);
             console.log("LOGIN -> Profile Error:", profileError);
 
-            if (profile?.role === "admin") {
-                console.log("LOGIN -> Pushing to /admin");
-                router.push("/admin");
+            if (profile?.role) {
+                console.log("LOGIN -> Pushing to /dashboards");
+                router.push("/dashboards");
             } else {
-                console.log("LOGIN -> Not admin. Role is", profile?.role, "pushing to /");
+                console.log("LOGIN -> No role found, pushing to /");
                 router.push("/");
             }
         } else {

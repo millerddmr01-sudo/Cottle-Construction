@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Loader2, UploadCloud, Image as ImageIcon, Trash2, Calendar, User, Search, Map } from "lucide-react";
+import { Loader2, UploadCloud, Image as ImageIcon, Trash2, Calendar, User, Search, Map, Video } from "lucide-react";
 import Image from "next/image";
 
 export default function TabGallery({ projectId, userRole, userId, supabase }: { projectId: string, userRole: string, userId: string, supabase: any }) {
@@ -103,9 +103,10 @@ export default function TabGallery({ projectId, userRole, userId, supabase }: { 
     const isManager = userRole === 'admin' || userRole === 'foreman';
     const filteredPhotos = filterParams === 'all' ? photos : photos.filter(p => p.photo_type === filterParams);
 
-    // Component to render the image. Because it's a private bucket, we need to fetch a signed URL.
-    const SecureImage = ({ path, alt }: { path: string, alt: string }) => {
+    // Component to render the image or video. Because it's a private bucket, we need to fetch a signed URL.
+    const SecureMedia = ({ path, alt }: { path: string, alt: string }) => {
         const [url, setUrl] = useState<string | null>(null);
+        const isVideo = path.match(/\.(mp4|webm|ogg|mov)$/i);
 
         useEffect(() => {
             const getUrl = async () => {
@@ -115,7 +116,15 @@ export default function TabGallery({ projectId, userRole, userId, supabase }: { 
             getUrl();
         }, [path]);
 
-        if (!url) return <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center text-gray-400"><ImageIcon size={24} /></div>;
+        if (!url) return <div className="w-full h-full bg-gray-100 animate-pulse flex items-center justify-center text-gray-400">{isVideo ? <Video size={24} /> : <ImageIcon size={24} />}</div>;
+
+        if (isVideo) {
+            return (
+                <video src={url} controls className="w-full h-full object-cover bg-black" playsInline>
+                    Your browser does not support the video tag.
+                </video>
+            );
+        }
 
         return <Image src={url} alt={alt} fill className="object-cover transition-transform group-hover:scale-105" unoptimized />;
     };
@@ -127,13 +136,14 @@ export default function TabGallery({ projectId, userRole, userId, supabase }: { 
         <div className="space-y-8">
             {/* Upload Section */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><UploadCloud className="text-primary" /> Upload Project Photo</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><UploadCloud className="text-primary" /> Upload Project Media</h2>
                 <form onSubmit={handleUpload} className="grid grid-cols-1 md:grid-cols-12 gap-4">
                     <div className="md:col-span-4">
-                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Select Image <span className="text-red-500">*</span></label>
+                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Select Image / Video <span className="text-red-500">*</span></label>
                         <input
                             type="file"
-                            accept="image/*"
+                            accept="image/*,video/*"
+                            capture="environment"
                             required
                             ref={fileInputRef}
                             onChange={handleFileSelect}
@@ -184,8 +194,8 @@ export default function TabGallery({ projectId, userRole, userId, supabase }: { 
                     ) : (
                         filteredPhotos.map((photo) => (
                             <div key={photo.id} className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden group flex flex-col h-full">
-                                <div className="aspect-video relative bg-gray-100 overflow-hidden">
-                                    <SecureImage path={photo.photo_url} alt={photo.description || 'Project Photo'} />
+                                <div className="aspect-video relative bg-gray-100 overflow-hidden text-center flex items-center justify-center">
+                                    <SecureMedia path={photo.photo_url} alt={photo.description || 'Project Media'} />
 
                                     {(isManager || photo.uploaded_by === userId) && (
                                         <button

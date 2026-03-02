@@ -121,24 +121,9 @@ export default function Navbar() {
                     {mounted ? (
                         user ? (
                             <div className="flex flex-row gap-4 items-center">
-                                {(userRole === 'admin' || userRole === 'foreman' || userRole === 'employee') && (
-                                    <Link href="/projects" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-                                        Projects Dashboard
-                                    </Link>
-                                )}
-                                {userRole === 'admin' && (
-                                    <Link href="/admin" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-                                        Admin Dashboard
-                                    </Link>
-                                )}
-                                {userRole === 'subcontractor' && (
-                                    <Link href="/subcontractor" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-                                        Subcontractor Portal
-                                    </Link>
-                                )}
-                                {userRole === 'customer' && (
-                                    <Link href="/customer" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
-                                        Customer Portal
+                                {(userRole === 'admin' || userRole === 'foreman' || userRole === 'employee' || userRole === 'subcontractor' || userRole === 'customer') && (
+                                    <Link href="/dashboards" className="text-sm font-bold text-primary hover:text-primary/80 transition-colors">
+                                        Dashboards
                                     </Link>
                                 )}
                                 <span className="flex items-center gap-2 text-sm text-gray-600 font-medium hidden lg:flex border-l border-gray-300 pl-4 ml-2">

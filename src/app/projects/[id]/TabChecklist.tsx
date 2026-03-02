@@ -104,9 +104,31 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
         e.preventDefault();
         if (!activeSectionIdForTask) return;
         setSaving(true);
+
+        let targetSectionId = activeSectionIdForTask;
+        const currentSection = sections.find(s => s.id === activeSectionIdForTask);
+
+        if (currentSection && currentSection.title === 'Permits and Utility Coordination' && currentSection.phase === 'pre_con') {
+            let kickoffSection = sections.find(s => s.phase === 'kickoff' && s.title === 'Permits and Utility Coordination');
+            if (!kickoffSection) {
+                const { data: newSection } = await supabase.from("project_checklist_sections").insert({
+                    project_id: projectId,
+                    phase: 'kickoff',
+                    title: 'Permits and Utility Coordination',
+                    sort_order: 1,
+                    allowed_roles: ["admin", "foreman", "employee"]
+                }).select().single();
+                if (newSection) {
+                    setSections([...sections, newSection]);
+                    kickoffSection = newSection;
+                }
+            }
+            if (kickoffSection) targetSectionId = kickoffSection.id;
+        }
+
         const { data, error } = await supabase.from("project_tasks").insert({
             project_id: projectId,
-            section_id: activeSectionIdForTask,
+            section_id: targetSectionId,
             title: newTask.title,
             description: newTask.description,
             sort_order: newTask.sort_order,
@@ -151,12 +173,80 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
             }
         }
 
-        const { error } = await supabase.from("project_tasks").update({ status: newStatus }).eq("id", taskId);
+        const updateData: any = { status: newStatus };
+
+        // Auto-move to "Post Project" phase when completed
+        if (newStatus === 'completed') {
+            // Find an existing section in the post_project phase
+            let postProjectSection = sections.find(s => s.phase === 'post_project');
+
+            // If none exists, create a default "Completed Items" section
+            if (!postProjectSection) {
+                const { data: newSection, error: sectionError } = await supabase.from("project_checklist_sections").insert({
+                    project_id: projectId,
+                    phase: 'post_project',
+                    title: 'Completed Items',
+                    sort_order: 1,
+                    allowed_roles: ["admin", "foreman", "employee"]
+                }).select().single();
+
+                if (sectionError) {
+                    console.error("Could not create post_project section", sectionError);
+                } else {
+                    setSections([...sections, newSection]);
+                    postProjectSection = newSection;
+                }
+            }
+
+            if (postProjectSection) {
+                updateData.section_id = postProjectSection.id;
+
+                // Set the sort order to be the last in this new section
+                const postProjectTasks = tasks.filter(t => t.section_id === postProjectSection.id);
+                updateData.sort_order = postProjectTasks.length + 1;
+            }
+
+            // Auto-Add to Daily Report
+            try {
+                const todayStr = new Date().toISOString().split('T')[0];
+                const { data: existingReport } = await supabase.from("foreman_daily_reports")
+                    .select("*")
+                    .eq("project_id", projectId)
+                    .eq("report_date", todayStr)
+                    .single();
+
+                const taskTitle = taskToUpdate.title;
+                const completionNote = `- Completed Checklist Item: ${taskTitle}`;
+
+                if (existingReport) {
+                    const newNotes = existingReport.task_completion_notes
+                        ? `${existingReport.task_completion_notes}\n${completionNote}`
+                        : completionNote;
+
+                    await supabase.from("foreman_daily_reports")
+                        .update({ task_completion_notes: newNotes })
+                        .eq("id", existingReport.id);
+                } else {
+                    await supabase.from("foreman_daily_reports").insert({
+                        project_id: projectId,
+                        foreman_id: userId,
+                        report_date: todayStr,
+                        status_notes: "Auto-generated report from checklist completion",
+                        task_completion_notes: completionNote,
+                        closeout_completed: false
+                    });
+                }
+            } catch (err) {
+                console.error("Error updating daily report", err);
+            }
+        }
+
+        const { error, data: updatedTaskData } = await supabase.from("project_tasks").update(updateData).eq("id", taskId).select("*, assignee:user_profiles(full_name)").single();
         if (error) {
             alert("Failed to update status: " + error.message);
         } else {
             const updatedTasks = [...tasks];
-            updatedTasks[taskIndex].status = newStatus;
+            updatedTasks[taskIndex] = updatedTaskData || { ...taskToUpdate, ...updateData };
             setTasks(updatedTasks);
         }
     };
@@ -200,6 +290,28 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
         e.preventDefault();
         if (!editingTaskId) return;
         setSaving(true);
+
+        let targetSectionId = editTaskData.section_id;
+        const currentSection = sections.find(s => s.id === targetSectionId);
+
+        if (currentSection && currentSection.title === 'Permits and Utility Coordination' && currentSection.phase === 'pre_con') {
+            let kickoffSection = sections.find(s => s.phase === 'kickoff' && s.title === 'Permits and Utility Coordination');
+            if (!kickoffSection) {
+                const { data: newSection } = await supabase.from("project_checklist_sections").insert({
+                    project_id: projectId,
+                    phase: 'kickoff',
+                    title: 'Permits and Utility Coordination',
+                    sort_order: 1,
+                    allowed_roles: ["admin", "foreman", "employee"]
+                }).select().single();
+                if (newSection) {
+                    setSections([...sections, newSection]);
+                    kickoffSection = newSection;
+                }
+            }
+            if (kickoffSection) targetSectionId = kickoffSection.id;
+        }
+
         const { data, error } = await supabase.from("project_tasks").update({
             title: editTaskData.title,
             description: editTaskData.description,
@@ -207,7 +319,8 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
             assigned_to: editTaskData.assigned_to || null,
             requires_picture: editTaskData.requires_picture,
             is_inspection: editTaskData.is_inspection,
-            status: editTaskData.status
+            status: editTaskData.status,
+            section_id: targetSectionId
         }).eq("id", editingTaskId).select("*, assignee:user_profiles(full_name)").single();
 
         if (error) {
@@ -382,65 +495,83 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
 
                                     <div className="bg-white">
                                         {/* Auto-injected Materials & Equipment from Scope */}
-                                        {section.title === 'Materials & Equipment' && (materials.length > 0 || equipment.length > 0) && (
-                                            <div className="border-b-4 border-gray-100 bg-blue-50/30">
-                                                <div className="px-4 py-2 bg-blue-100 border-b border-blue-200 text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center justify-between">
-                                                    <span>Scope Requirements (Auto-Synced)</span>
+                                        {(() => {
+                                            if (section.title !== 'Materials & Equipment') return null;
+
+                                            const relevantMaterials = materials.filter(m => {
+                                                if (activePhase === 'post_project') return m.status === 'Delivered';
+                                                if (activePhase === 'kickoff') return m.status === 'Ordered';
+                                                return m.status !== 'Ordered' && m.status !== 'Delivered';
+                                            });
+
+                                            const relevantEquipment = equipment.filter(e => {
+                                                if (activePhase === 'post_project') return e.status === 'Delivered';
+                                                if (activePhase === 'kickoff') return e.status === 'Ordered';
+                                                return e.status !== 'Ordered' && e.status !== 'Delivered';
+                                            });
+
+                                            if (relevantMaterials.length === 0 && relevantEquipment.length === 0) return null;
+
+                                            return (
+                                                <div className="border-b-4 border-gray-100 bg-blue-50/30">
+                                                    <div className="px-4 py-2 bg-blue-100 border-b border-blue-200 text-xs font-bold text-blue-800 uppercase tracking-wider flex items-center justify-between">
+                                                        <span>Scope Requirements (Auto-Synced)</span>
+                                                    </div>
+                                                    <div className="divide-y divide-gray-200">
+                                                        {relevantMaterials.map((mat) => (
+                                                            <div key={`mat-${mat.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
+                                                                <div className="flex-1">
+                                                                    <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                                                                        📦 {mat.material_name}
+                                                                    </h4>
+                                                                    <p className="text-xs text-gray-500 mt-0.5">{mat.quantity} {mat.unit_measure}</p>
+                                                                </div>
+                                                                <div className="flex-shrink-0">
+                                                                    <select
+                                                                        value={mat.status || "To be ordered"}
+                                                                        onChange={(e) => updateMaterialStatus(mat.id, e.target.value)}
+                                                                        className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
+                                                                            ${mat.status === 'Delivered' ? 'bg-green-50 text-green-700' :
+                                                                                mat.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
+                                                                        `}
+                                                                    >
+                                                                        <option value="To be ordered">To be ordered</option>
+                                                                        <option value="Ordered">Ordered</option>
+                                                                        <option value="Delivered">Delivered</option>
+                                                                        <option value="Returned">Returned</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        {relevantEquipment.map((eq) => (
+                                                            <div key={`eq-${eq.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
+                                                                <div className="flex-1">
+                                                                    <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                                                                        🚜 {eq.equipment_name}
+                                                                    </h4>
+                                                                    <p className="text-xs text-gray-500 mt-0.5">{eq.duration} {eq.duration_unit}{Number(eq.duration) !== 1 ? 's' : ''}</p>
+                                                                </div>
+                                                                <div className="flex-shrink-0">
+                                                                    <select
+                                                                        value={eq.status || "To be ordered"}
+                                                                        onChange={(e) => updateEquipmentStatus(eq.id, e.target.value)}
+                                                                        className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
+                                                                            ${eq.status === 'Delivered' ? 'bg-green-50 text-green-700' :
+                                                                                eq.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
+                                                                        `}
+                                                                    >
+                                                                        <option value="To be ordered">To be ordered</option>
+                                                                        <option value="Ordered">Ordered</option>
+                                                                        <option value="Delivered">Delivered</option>
+                                                                        <option value="Returned">Returned</option>
+                                                                    </select>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
-                                                <div className="divide-y divide-gray-200">
-                                                    {materials.map((mat) => (
-                                                        <div key={`mat-${mat.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
-                                                            <div className="flex-1">
-                                                                <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                                                    📦 {mat.material_name}
-                                                                </h4>
-                                                                <p className="text-xs text-gray-500 mt-0.5">{mat.quantity} {mat.unit_measure}</p>
-                                                            </div>
-                                                            <div className="flex-shrink-0">
-                                                                <select
-                                                                    value={mat.status || "To be ordered"}
-                                                                    onChange={(e) => updateMaterialStatus(mat.id, e.target.value)}
-                                                                    className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
-                                                                        ${mat.status === 'Delivered' ? 'bg-green-50 text-green-700' :
-                                                                            mat.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
-                                                                    `}
-                                                                >
-                                                                    <option value="To be ordered">To be ordered</option>
-                                                                    <option value="Ordered">Ordered</option>
-                                                                    <option value="Delivered">Delivered</option>
-                                                                    <option value="Returned">Returned</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                    {equipment.map((eq) => (
-                                                        <div key={`eq-${eq.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
-                                                            <div className="flex-1">
-                                                                <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                                                    🚜 {eq.equipment_name}
-                                                                </h4>
-                                                                <p className="text-xs text-gray-500 mt-0.5">{eq.duration} {eq.duration_unit}{Number(eq.duration) !== 1 ? 's' : ''}</p>
-                                                            </div>
-                                                            <div className="flex-shrink-0">
-                                                                <select
-                                                                    value={eq.status || "To be ordered"}
-                                                                    onChange={(e) => updateEquipmentStatus(eq.id, e.target.value)}
-                                                                    className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
-                                                                        ${eq.status === 'Delivered' ? 'bg-green-50 text-green-700' :
-                                                                            eq.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
-                                                                    `}
-                                                                >
-                                                                    <option value="To be ordered">To be ordered</option>
-                                                                    <option value="Ordered">Ordered</option>
-                                                                    <option value="Delivered">Delivered</option>
-                                                                    <option value="Returned">Returned</option>
-                                                                </select>
-                                                            </div>
-                                                        </div>
-                                                    ))}
-                                                </div>
-                                            </div>
-                                        )}
+                                            );
+                                        })()}
 
                                         {/* Render Tasks for this Section */}
                                         {sectionTasks.length === 0 ? (
@@ -543,7 +674,7 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                                             {(task.assignee || task.description) && (
                                                                                                 <div className="flex flex-col gap-1 text-xs text-gray-500 mt-1">
                                                                                                     {task.description && <p>{task.description}</p>}
-                                                                                                    {task.assignee && <p className="font-medium text-gray-700">👤 {task.assignee.full_name}</p>}
+                                                                                                    {task.assignee && <p className="font-bold text-gray-900">👤 {task.assignee.full_name}</p>}
                                                                                                 </div>
                                                                                             )}
                                                                                         </div>
@@ -564,7 +695,7 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                                                 <select
                                                                                                     value={task.assigned_to || ""}
                                                                                                     onChange={(e) => updateTaskAssignee(task.id, e.target.value)}
-                                                                                                    className="text-xs font-bold rounded-md py-1.5 pl-3 pr-8 focus:ring-primary focus:border-primary border-gray-300 bg-gray-50 text-gray-700 w-32 truncate"
+                                                                                                    className="text-xs font-bold rounded-md py-1.5 pl-3 pr-8 focus:ring-primary focus:border-primary border-gray-300 bg-white text-gray-900 w-32 truncate"
                                                                                                 >
                                                                                                     <option value="">Unassigned</option>
                                                                                                     {employees.map(emp => (
@@ -577,8 +708,8 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                                                 onChange={(e) => updateTaskStatus(task.id, e.target.value)}
                                                                                                 disabled={isBlocked && task.status !== 'completed' && task.status !== 'inspection'}
                                                                                                 className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 focus:ring-primary focus:border-primary disabled:opacity-50 disabled:cursor-not-allowed border-gray-300
-                                                                            ${task.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                                                                                                        task.status === 'inspection' ? 'bg-red-50 text-red-700 border-red-200' : ''}
+                                                                            ${task.status === 'completed' ? 'bg-green-50 text-green-900 border-green-200' :
+                                                                                                        task.status === 'inspection' ? 'bg-red-50 text-red-900 border-red-200' : 'bg-white text-gray-900'}
                                                                         `}
                                                                                             >
                                                                                                 <option value="pending">Pending</option>

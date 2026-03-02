@@ -67,7 +67,8 @@ export default function AdminEmployeeDetailPage() {
             phone_number: employee.phone_number,
             role: employee.role,
             employee_id: employee.employee_id,
-            job_description: employee.job_description
+            job_description: employee.job_description,
+            hourly_rate: employee.hourly_rate ? parseFloat(employee.hourly_rate) : 0
         }).eq("id", employee.id);
 
         if (error) alert("Error saving profile: " + error.message);
@@ -214,6 +215,10 @@ export default function AdminEmployeeDetailPage() {
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Job Title / Description</label>
                                     <input type="text" name="job_description" value={employee.job_description || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Billing Hourly Rate ($)</label>
+                                    <input type="number" step="0.01" min="0" name="hourly_rate" value={employee.hourly_rate || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="e.g. 75.00" />
                                 </div>
 
                                 <button type="submit" disabled={savingProfile} className="w-full py-2 bg-secondary text-white font-bold rounded hover:bg-secondary/90 disabled:opacity-50 mt-4 flex justify-center items-center gap-2">

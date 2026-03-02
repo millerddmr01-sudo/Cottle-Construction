@@ -200,7 +200,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
             {/* Add New Material Form */}
             {canEdit && (
                 <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
-                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><Plus size={16} className="text-primary" /> Add Requirement</h4>
+                    <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><Plus size={16} className="text-primary" /> Add Material</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
                         <div className="lg:col-span-4">
                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Material Name <span className="text-red-500">*</span></label>
@@ -248,7 +248,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                         </div>
                         <div className="lg:col-span-12 mt-2">
                             <button type="submit" disabled={adding} className="w-full sm:w-auto px-6 py-1.5 flex items-center justify-center gap-1 bg-primary text-white rounded-md text-sm font-bold hover:bg-primary/90 disabled:opacity-50 float-right">
-                                {adding ? <Loader2 size={16} className="animate-spin" /> : "Add Requirement"}
+                                {adding ? <Loader2 size={16} className="animate-spin" /> : "Add Material"}
                             </button>
                             <div className="clear-both"></div>
                         </div>
