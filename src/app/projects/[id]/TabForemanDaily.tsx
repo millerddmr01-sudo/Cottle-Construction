@@ -14,9 +14,9 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
     const todayStr = new Date().toISOString().split('T')[0];
 
     // Form States
-    const [hourForm, setHourForm] = useState({ employee_id: "", date: todayStr, hours_worked: "" });
+    const [hourForm, setHourForm] = useState({ employee_id: "", date: todayStr, hours_worked: "", notes: "" });
     const [expenseForm, setExpenseForm] = useState({ expense_type: "material", description: "", cost: "", date_incurred: todayStr });
-    const [reportForm, setReportForm] = useState({ report_date: todayStr, status_notes: "", task_completion_notes: "", closeout_completed: false });
+    const [reportForm, setReportForm] = useState({ report_date: todayStr, status_notes: "", task_completion_notes: "", closeout_completed: false, include_hours: false, include_expenses: false });
 
     useEffect(() => {
         let isMounted = true;
@@ -26,7 +26,7 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
             if (isMounted) setEmployees(empData || []);
 
             // Fetch Project Hours
-            const { data: hrData } = await supabase.from("project_hours").select("*, employee:user_profiles(full_name)").eq("project_id", projectId).order("date", { ascending: false });
+            const { data: hrData } = await supabase.from("project_hours").select("*, employee:user_profiles!employee_id(full_name)").eq("project_id", projectId).order("date", { ascending: false });
             if (isMounted) setHours(hrData || []);
 
             // Fetch Expenses
@@ -52,13 +52,14 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
             project_id: projectId,
             employee_id: hourForm.employee_id,
             date: hourForm.date,
-            hours_worked: parseFloat(hourForm.hours_worked)
-        }).select("*, employee:user_profiles(full_name)").single();
+            hours_worked: parseFloat(hourForm.hours_worked),
+            notes: hourForm.notes
+        }).select("*, employee:user_profiles!employee_id(full_name)").single();
 
         if (error) alert("Error logging hours: " + error.message);
         else {
             setHours([data, ...hours]);
-            setHourForm({ employee_id: "", date: todayStr, hours_worked: "" });
+            setHourForm({ employee_id: "", date: todayStr, hours_worked: "", notes: "" });
         }
         setSaving(false);
     };
@@ -101,13 +102,15 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
             report_date: reportForm.report_date,
             status_notes: reportForm.status_notes,
             task_completion_notes: reportForm.task_completion_notes,
-            closeout_completed: reportForm.closeout_completed
+            closeout_completed: reportForm.closeout_completed,
+            include_hours: reportForm.include_hours,
+            include_expenses: reportForm.include_expenses
         }).select("*, foreman:user_profiles(full_name)").single();
 
         if (error) alert("Error saving daily report: " + error.message);
         else {
             setReports([data, ...reports]);
-            setReportForm({ report_date: todayStr, status_notes: "", task_completion_notes: "", closeout_completed: false });
+            setReportForm({ report_date: todayStr, status_notes: "", task_completion_notes: "", closeout_completed: false, include_hours: false, include_expenses: false });
         }
         setSaving(false);
     };
@@ -164,9 +167,19 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
                                 <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Task Completion Notes</label>
                                 <textarea rows={2} value={reportForm.task_completion_notes} onChange={e => setReportForm({ ...reportForm, task_completion_notes: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="Additional details on tasks finished..." />
                             </div>
-                            <div className="flex items-center gap-2 pt-2 border-t border-gray-100">
-                                <input type="checkbox" id="closeout" checked={reportForm.closeout_completed} onChange={e => setReportForm({ ...reportForm, closeout_completed: e.target.checked })} className="h-5 w-5 text-primary rounded ring-primary" />
-                                <label htmlFor="closeout" className="text-sm font-bold text-green-700">Project Secured & Daily Closeout Finished</label>
+                            <div className="flex flex-col gap-3 pt-3 border-t border-gray-100">
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" id="closeout" checked={reportForm.closeout_completed} onChange={e => setReportForm({ ...reportForm, closeout_completed: e.target.checked })} className="h-5 w-5 text-green-600 rounded focus:ring-green-500 cursor-pointer" />
+                                    <label htmlFor="closeout" className="text-sm font-bold text-green-700 cursor-pointer flex-1">Project Secured & Daily Closeout Finished</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" id="incl_hours" checked={reportForm.include_hours} onChange={e => setReportForm({ ...reportForm, include_hours: e.target.checked })} className="h-5 w-5 text-primary rounded focus:ring-primary cursor-pointer" />
+                                    <label htmlFor="incl_hours" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">Include logged hours in this report</label>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <input type="checkbox" id="incl_exp" checked={reportForm.include_expenses} onChange={e => setReportForm({ ...reportForm, include_expenses: e.target.checked })} className="h-5 w-5 text-primary rounded focus:ring-primary cursor-pointer" />
+                                    <label htmlFor="incl_exp" className="text-sm font-medium text-gray-700 cursor-pointer flex-1">Include logged expenses in this report</label>
+                                </div>
                             </div>
                             <button type="submit" disabled={saving} className="w-full py-2 bg-primary text-white font-bold rounded hover:bg-primary/90 disabled:opacity-50 mt-4 flex justify-center items-center">
                                 {saving ? <Loader2 className="animate-spin" size={16} /> : "Submit End-of-Day Report"}
@@ -177,15 +190,54 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
                     {/* Report History */}
                     <div className="space-y-4">
                         <h3 className="font-bold text-gray-700 text-sm uppercase tracking-wider">Report History</h3>
-                        {reports.length === 0 ? <p className="text-sm text-gray-500">No reports logged yet.</p> : reports.map(r => (
-                            <div key={r.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm relative group">
-                                <button type="button" onClick={() => deleteRecord("foreman_daily_reports", r.id, setReports, reports)} className="absolute top-2 right-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
-                                <div className="text-xs font-bold text-primary mb-1">{r.report_date} - {r.foreman.full_name}</div>
-                                <p className="text-sm text-gray-800 mb-2">{r.status_notes}</p>
-                                {r.task_completion_notes && <p className="text-xs text-gray-500 italic mb-2">Tasks: {r.task_completion_notes}</p>}
-                                {r.closeout_completed ? <div className="text-xs font-bold text-green-600"><CheckCircle size={12} className="inline mr-1" /> Closeout Complete</div> : <div className="text-xs font-bold text-red-600"><AlertTriangle size={12} className="inline mr-1" /> Closeout Not Checked</div>}
-                            </div>
-                        ))}
+                        {reports.length === 0 ? <p className="text-sm text-gray-500">No reports logged yet.</p> : reports.map(r => {
+                            const reportHours = r.include_hours ? hours.filter(h => h.date === r.report_date) : [];
+                            const reportExpenses = r.include_expenses ? expenses.filter(e => e.date_incurred === r.report_date) : [];
+                            const totalReportHours = reportHours.reduce((acc: number, curr: any) => acc + Number(curr.hours_worked), 0);
+                            const totalReportExpenses = reportExpenses.reduce((acc: number, curr: any) => acc + Number(curr.cost), 0);
+                            
+                            return (
+                                <div key={r.id} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm relative group">
+                                    <button type="button" onClick={() => deleteRecord("foreman_daily_reports", r.id, setReports, reports)} className="absolute top-2 right-2 text-gray-400 hover:text-red-600 opacity-0 group-hover:opacity-100 transition-opacity"><Trash2 size={14} /></button>
+                                    <div className="text-xs font-bold text-primary mb-1">{r.report_date} - {r.foreman?.full_name || 'Admin'}</div>
+                                    <p className="text-sm font-medium text-gray-900 mb-2">{r.status_notes}</p>
+                                    {r.task_completion_notes && <p className="text-xs text-gray-700 font-medium mb-3">Tasks: {r.task_completion_notes}</p>}
+                                    {r.closeout_completed ? <div className="text-xs font-bold text-green-700 mb-2"><CheckCircle size={12} className="inline mr-1" /> Closeout Complete</div> : <div className="text-xs font-bold text-red-700 mb-2"><AlertTriangle size={12} className="inline mr-1" /> Closeout Not Checked</div>}
+                                    
+                                    {r.include_hours && reportHours.length > 0 && (
+                                        <div className="mt-3 bg-blue-50/50 p-2 rounded text-xs border border-blue-200">
+                                            <div className="font-bold text-blue-900 mb-1 border-b border-blue-200 pb-1">Hours Logged</div>
+                                            {reportHours.map((h: any) => (
+                                                <div key={h.id} className="flex justify-between border-b border-blue-100/50 last:border-0 py-1">
+                                                    <span><span className="font-bold text-gray-900">{h.employee.full_name}</span> {h.notes && <span className="italic font-medium text-gray-700">- {h.notes}</span>}</span>
+                                                    <span className="font-bold text-blue-800">{h.hours_worked} hrs</span>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between border-t border-blue-200 mt-1 pt-1 font-bold">
+                                                <span className="text-blue-900">Total Hours</span>
+                                                <span className="text-blue-900">{totalReportHours} hrs</span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {r.include_expenses && reportExpenses.length > 0 && (
+                                        <div className="mt-2 bg-red-50/50 p-2 rounded text-xs border border-red-200">
+                                            <div className="font-bold text-red-900 mb-1 border-b border-red-200 pb-1">Expenses Logged</div>
+                                            {reportExpenses.map((e: any) => (
+                                                <div key={e.id} className="flex justify-between border-b border-red-100/50 last:border-0 py-1">
+                                                    <span><span className="capitalize font-bold text-gray-900">{e.expense_type.replace('_', ' ')}</span> <span className="font-medium text-gray-800">- {e.description}</span></span>
+                                                    <span className="font-bold text-red-800">${Number(e.cost).toFixed(2)}</span>
+                                                </div>
+                                            ))}
+                                            <div className="flex justify-between border-t border-red-200 mt-1 pt-1 font-bold">
+                                                <span className="text-red-900">Total Expenses</span>
+                                                <span className="text-red-900">${totalReportExpenses.toFixed(2)}</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
 
@@ -213,6 +265,10 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
                                     <input type="number" step="0.5" max="24" required value={hourForm.hours_worked} onChange={e => setHourForm({ ...hourForm, hours_worked: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="E.g. 8" />
                                 </div>
                             </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Notes <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                <input type="text" value={hourForm.notes} onChange={e => setHourForm({ ...hourForm, notes: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="Task details" />
+                            </div>
                             <button type="submit" disabled={saving || !hourForm.employee_id} className="w-full py-2 bg-blue-600 text-white font-bold rounded hover:bg-blue-700 disabled:opacity-50 mt-4 flex justify-center items-center">
                                 {saving ? <Loader2 className="animate-spin" size={16} /> : "+ Log Hours"}
                             </button>
@@ -227,7 +283,7 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
                                 <div key={h.id} className="p-3 flex justify-between items-center group">
                                     <div>
                                         <div className="text-sm font-bold text-gray-900">{h.employee.full_name}</div>
-                                        <div className="text-xs text-gray-500">{h.date}</div>
+                                        <div className="text-xs text-gray-500">{h.date} {h.notes && <span className="text-gray-400 italic"> • {h.notes}</span>}</div>
                                     </div>
                                     <div className="flex items-center gap-4">
                                         <div className="text-sm font-extrabold text-blue-600">{h.hours_worked} hrs</div>

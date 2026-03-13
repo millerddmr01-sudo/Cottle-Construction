@@ -17,7 +17,8 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
     const [laborForm, setLaborForm] = useState({
         employee_id: "",
         date: todayStr,
-        hours_worked: ""
+        hours_worked: "",
+        notes: ""
     });
 
     useEffect(() => {
@@ -32,7 +33,7 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
             // Fetch Labor (Project Hours) with Employee Hourly Rate
             const { data: hrData } = await supabase
                 .from("project_hours")
-                .select("*, employee:user_profiles(full_name, hourly_rate)")
+                .select("*, employee:user_profiles!employee_id(full_name, hourly_rate)")
                 .eq("project_id", projectId)
                 .order("date", { ascending: false });
 
@@ -79,16 +80,17 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
                 project_id: projectId,
                 employee_id: laborForm.employee_id,
                 date: laborForm.date,
-                hours_worked: parseFloat(laborForm.hours_worked)
+                hours_worked: parseFloat(laborForm.hours_worked),
+                notes: laborForm.notes
             })
-            .select("*, employee:user_profiles(full_name, hourly_rate)")
+            .select("*, employee:user_profiles!employee_id(full_name, hourly_rate)")
             .single();
 
         if (error) {
             alert("Error adding manual time entry: " + error.message);
         } else if (data) {
             setHours([data, ...hours]);
-            setLaborForm({ employee_id: "", date: todayStr, hours_worked: "" });
+            setLaborForm({ employee_id: "", date: todayStr, hours_worked: "", notes: "" });
         }
 
         setAddingLabor(false);
@@ -186,7 +188,17 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
                                             placeholder="e.g. 4.5"
                                         />
                                     </div>
-                                    <div className="col-span-1 md:col-span-4 flex justify-end">
+                                    <div className="col-span-1 md:col-span-3">
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Notes <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                        <input
+                                            type="text"
+                                            value={laborForm.notes}
+                                            onChange={(e) => setLaborForm({ ...laborForm, notes: e.target.value })}
+                                            className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white"
+                                            placeholder="Description of work performed"
+                                        />
+                                    </div>
+                                    <div className="col-span-1 md:col-span-1 flex justify-end items-end">
                                         <button
                                             type="submit"
                                             disabled={addingLabor || !laborForm.employee_id || !laborForm.hours_worked}
@@ -214,7 +226,10 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
                                 <tbody>
                                     {hours.map(h => (
                                         <tr key={h.id} className="border-t border-gray-50 border-dashed">
-                                            <td className="py-2 text-gray-900 font-medium">{h.employee?.full_name || 'Unknown'}</td>
+                                            <td className="py-2 text-gray-900">
+                                                <div className="font-medium">{h.employee?.full_name || 'Unknown'}</div>
+                                                {h.notes && <div className="text-xs text-gray-500 italic mt-0.5">{h.notes}</div>}
+                                            </td>
                                             <td className="py-2 text-gray-600">{h.date}</td>
                                             <td className="py-2 text-gray-600 text-right">{h.hours_worked}</td>
                                             <td className="py-2 text-gray-600 text-right">${Number(h.employee?.hourly_rate || 0).toFixed(2)}/hr</td>

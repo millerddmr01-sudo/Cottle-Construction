@@ -239,6 +239,35 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
             } catch (err) {
                 console.error("Error updating daily report", err);
             }
+        } else if (newStatus !== 'completed') {
+            const currentSection = sections.find(s => s.id === taskToUpdate.section_id);
+            if (currentSection && (currentSection.phase === 'kickoff' || currentSection.phase === 'post_project')) {
+                let preConSection = sections.find(s => s.phase === 'pre_con' && s.title !== 'Permits and Utility Coordination' && s.title !== 'Materials & Equipment');
+                if (!preConSection) {
+                    preConSection = sections.find(s => s.phase === 'pre_con'); // Fallback
+                }
+
+                if (!preConSection) {
+                    const { data: newSection, error: sectionError } = await supabase.from("project_checklist_sections").insert({
+                        project_id: projectId,
+                        phase: 'pre_con',
+                        title: 'Pending Items',
+                        sort_order: 1,
+                        allowed_roles: ["admin", "foreman", "employee"]
+                    }).select().single();
+
+                    if (!sectionError && newSection) {
+                        setSections([...sections, newSection]);
+                        preConSection = newSection;
+                    }
+                }
+
+                if (preConSection) {
+                    updateData.section_id = preConSection.id;
+                    const preConTasks = tasks.filter(t => t.section_id === preConSection.id);
+                    updateData.sort_order = preConTasks.length + 1;
+                }
+            }
         }
 
         const { error, data: updatedTaskData } = await supabase.from("project_tasks").update(updateData).eq("id", taskId).select("*, assignee:user_profiles(full_name)").single();
@@ -500,14 +529,14 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
 
                                             const relevantMaterials = materials.filter(m => {
                                                 if (activePhase === 'post_project') return m.status === 'Delivered';
-                                                if (activePhase === 'kickoff') return m.status === 'Ordered';
-                                                return m.status !== 'Ordered' && m.status !== 'Delivered';
+                                                if (activePhase === 'kickoff') return m.status === 'Ordered' || m.status === 'To be delivered';
+                                                return m.status !== 'Ordered' && m.status !== 'To be delivered' && m.status !== 'Delivered';
                                             });
 
                                             const relevantEquipment = equipment.filter(e => {
-                                                if (activePhase === 'post_project') return e.status === 'Delivered';
+                                                if (activePhase === 'post_project') return e.status === 'Delivered' || e.status === 'Returned';
                                                 if (activePhase === 'kickoff') return e.status === 'Ordered';
-                                                return e.status !== 'Ordered' && e.status !== 'Delivered';
+                                                return e.status !== 'Ordered' && e.status !== 'Delivered' && e.status !== 'Returned';
                                             });
 
                                             if (relevantMaterials.length === 0 && relevantEquipment.length === 0) return null;
@@ -527,48 +556,49 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                     <p className="text-xs text-gray-500 mt-0.5">{mat.quantity} {mat.unit_measure}</p>
                                                                 </div>
                                                                 <div className="flex-shrink-0">
-                                                                    <select
-                                                                        value={mat.status || "To be ordered"}
-                                                                        onChange={(e) => updateMaterialStatus(mat.id, e.target.value)}
-                                                                        className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
-                                                                            ${mat.status === 'Delivered' ? 'bg-green-50 text-green-700' :
-                                                                                mat.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
-                                                                        `}
-                                                                    >
-                                                                        <option value="To be ordered">To be ordered</option>
-                                                                        <option value="Ordered">Ordered</option>
-                                                                        <option value="Delivered">Delivered</option>
-                                                                        <option value="Returned">Returned</option>
-                                                                    </select>
+                                                                        <select
+                                                                            value={mat.status || "To be ordered"}
+                                                                            onChange={(e) => updateMaterialStatus(mat.id, e.target.value)}
+                                                                            className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
+                                                                                ${mat.status === 'Delivered' ? 'bg-green-50 text-green-900' :
+                                                                                    (mat.status === 'Ordered' || mat.status === 'To be delivered') ? 'bg-blue-50 text-blue-900' : 'bg-gray-100 text-gray-900'}
+                                                                            `}
+                                                                        >
+                                                                            <option value="To be ordered">To be ordered</option>
+                                                                            <option value="Ordered">Ordered</option>
+                                                                            <option value="To be delivered">To be delivered</option>
+                                                                            <option value="Delivered">Delivered</option>
+                                                                            <option value="Returned">Returned</option>
+                                                                        </select>
+                                                                    </div>
                                                                 </div>
-                                                            </div>
-                                                        ))}
-                                                        {relevantEquipment.map((eq) => (
-                                                            <div key={`eq-${eq.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
-                                                                <div className="flex-1">
-                                                                    <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
-                                                                        🚜 {eq.equipment_name}
-                                                                    </h4>
-                                                                    <p className="text-xs text-gray-500 mt-0.5">{eq.duration} {eq.duration_unit}{Number(eq.duration) !== 1 ? 's' : ''}</p>
+                                                            ))}
+                                                            {relevantEquipment.map((eq) => (
+                                                                <div key={`eq-${eq.id}`} className="p-3 flex items-center justify-between hover:bg-white transition-colors">
+                                                                    <div className="flex-1">
+                                                                        <h4 className="font-bold text-sm text-gray-900 flex items-center gap-2">
+                                                                            🚜 {eq.equipment_name}
+                                                                        </h4>
+                                                                        <p className="text-xs text-gray-500 mt-0.5">{eq.duration} {eq.duration_unit}{Number(eq.duration) !== 1 ? 's' : ''}</p>
+                                                                    </div>
+                                                                    <div className="flex-shrink-0">
+                                                                        <select
+                                                                            value={eq.status || "To be ordered"}
+                                                                            onChange={(e) => updateEquipmentStatus(eq.id, e.target.value)}
+                                                                            className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
+                                                                                ${(eq.status === 'Delivered' || eq.status === 'Returned') ? 'bg-green-50 text-green-900' :
+                                                                                    eq.status === 'Ordered' ? 'bg-blue-50 text-blue-900' : 'bg-gray-100 text-gray-900'}
+                                                                            `}
+                                                                        >
+                                                                            <option value="To be ordered">To be ordered</option>
+                                                                            <option value="Ordered">Ordered</option>
+                                                                            <option value="Delivered">Delivered</option>
+                                                                            <option value="Returned">Returned</option>
+                                                                        </select>
+                                                                    </div>
                                                                 </div>
-                                                                <div className="flex-shrink-0">
-                                                                    <select
-                                                                        value={eq.status || "To be ordered"}
-                                                                        onChange={(e) => updateEquipmentStatus(eq.id, e.target.value)}
-                                                                        className={`text-xs font-bold rounded-md py-1.5 pl-3 pr-8 border-gray-300 focus:ring-primary focus:border-primary
-                                                                            ${eq.status === 'Delivered' ? 'bg-green-50 text-green-700' :
-                                                                                eq.status === 'Ordered' ? 'bg-blue-50 text-blue-700' : 'bg-orange-50 text-orange-700'}
-                                                                        `}
-                                                                    >
-                                                                        <option value="To be ordered">To be ordered</option>
-                                                                        <option value="Ordered">Ordered</option>
-                                                                        <option value="Delivered">Delivered</option>
-                                                                        <option value="Returned">Returned</option>
-                                                                    </select>
-                                                                </div>
-                                                            </div>
-                                                        ))}
-                                                    </div>
+                                                            ))}
+                                                        </div>
                                                 </div>
                                             );
                                         })()}
@@ -606,15 +636,15 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                                     <form onSubmit={handleUpdateTask} className="w-full bg-white p-3 rounded border border-blue-200 shadow-sm relative grid grid-cols-1 md:grid-cols-12 gap-3">
                                                                                         <div className="md:col-span-1">
                                                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ord #</label>
-                                                                                            <input type="number" required value={editTaskData?.sort_order || 0} onChange={e => setEditTaskData({ ...editTaskData, sort_order: parseInt(e.target.value) })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary" />
+                                                                                            <input type="number" required value={editTaskData?.sort_order || 0} onChange={e => setEditTaskData({ ...editTaskData, sort_order: parseInt(e.target.value) })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary" />
                                                                                         </div>
                                                                                         <div className="md:col-span-4">
                                                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Task Title <span className="text-red-500">*</span></label>
-                                                                                            <input type="text" required value={editTaskData?.title || ""} onChange={e => setEditTaskData({ ...editTaskData, title: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary" />
+                                                                                            <input type="text" required value={editTaskData?.title || ""} onChange={e => setEditTaskData({ ...editTaskData, title: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary" />
                                                                                         </div>
                                                                                         <div className="md:col-span-2">
                                                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status</label>
-                                                                                            <select value={editTaskData?.status || "pending"} onChange={e => setEditTaskData({ ...editTaskData, status: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary">
+                                                                                            <select value={editTaskData?.status || "pending"} onChange={e => setEditTaskData({ ...editTaskData, status: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary">
                                                                                                 <option value="pending">Pending</option>
                                                                                                 <option value="in_progress">In Progress</option>
                                                                                                 <option value="completed">Completed</option>
@@ -623,7 +653,7 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                                                         </div>
                                                                                         <div className="md:col-span-3">
                                                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Assignee</label>
-                                                                                            <select value={editTaskData?.assigned_to || ""} onChange={e => setEditTaskData({ ...editTaskData, assigned_to: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary">
+                                                                                            <select value={editTaskData?.assigned_to || ""} onChange={e => setEditTaskData({ ...editTaskData, assigned_to: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary">
                                                                                                 <option value="">-- Optional --</option>
                                                                                                 {employees.map(emp => (
                                                                                                     <option key={emp.id} value={emp.id}>{emp.full_name}</option>
@@ -749,22 +779,22 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                                                     <form onSubmit={handleCreateTask} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-white p-3 rounded border border-gray-200 shadow-sm relative">
                                                         <div className="md:col-span-1">
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Ord #</label>
-                                                            <input type="number" required value={newTask.sort_order} onChange={e => setNewTask({ ...newTask, sort_order: parseInt(e.target.value) })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary" />
+                                                            <input type="number" required value={newTask.sort_order} onChange={e => setNewTask({ ...newTask, sort_order: parseInt(e.target.value) })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary" />
                                                         </div>
                                                         <div className="md:col-span-4">
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Task Title <span className="text-red-500">*</span></label>
-                                                            <input type="text" required value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary" placeholder="E.g. Call for inspection" autoFocus />
+                                                            <input type="text" required value={newTask.title} onChange={e => setNewTask({ ...newTask, title: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary" placeholder="E.g. Call for inspection" autoFocus />
                                                         </div>
                                                         <div className="md:col-span-2">
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Status Rule</label>
-                                                            <select value={newTask.status} onChange={e => setNewTask({ ...newTask, status: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary">
+                                                            <select value={newTask.status} onChange={e => setNewTask({ ...newTask, status: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary">
                                                                 <option value="pending">Standard Duty</option>
                                                                 <option value="hold_point">Hold Point</option>
                                                             </select>
                                                         </div>
                                                         <div className="md:col-span-3">
                                                             <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Assignee</label>
-                                                            <select value={newTask.assigned_to} onChange={e => setNewTask({ ...newTask, assigned_to: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs focus:ring-primary focus:border-primary">
+                                                            <select value={newTask.assigned_to} onChange={e => setNewTask({ ...newTask, assigned_to: e.target.value })} className="w-full px-2 py-1.5 border border-gray-300 rounded text-xs text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary">
                                                                 <option value="">-- Optional --</option>
                                                                 {employees.map(emp => (
                                                                     <option key={emp.id} value={emp.id}>{emp.full_name}</option>

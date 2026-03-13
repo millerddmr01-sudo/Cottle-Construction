@@ -194,15 +194,15 @@ export default function AdminEmployeeDetailPage() {
                             <form onSubmit={handleSaveProfile} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Full Name</label>
-                                    <input type="text" name="full_name" value={employee.full_name || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <input type="text" name="full_name" value={employee.full_name || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Phone Number</label>
-                                    <input type="tel" name="phone_number" value={employee.phone_number || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <input type="tel" name="phone_number" value={employee.phone_number || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Role Permission</label>
-                                    <select name="role" value={employee.role} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white">
+                                    <select name="role" value={employee.role} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium bg-white">
                                         <option value="employee">Standard Employee</option>
                                         <option value="foreman">Foreman</option>
                                         <option value="admin">Administrator (Warning)</option>
@@ -210,15 +210,15 @@ export default function AdminEmployeeDetailPage() {
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Badge / Employee ID</label>
-                                    <input type="text" name="employee_id" value={employee.employee_id || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <input type="text" name="employee_id" value={employee.employee_id || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Job Title / Description</label>
-                                    <input type="text" name="job_description" value={employee.job_description || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <input type="text" name="job_description" value={employee.job_description || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" />
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Billing Hourly Rate ($)</label>
-                                    <input type="number" step="0.01" min="0" name="hourly_rate" value={employee.hourly_rate || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" placeholder="e.g. 75.00" />
+                                    <input type="number" step="0.01" min="0" name="hourly_rate" value={employee.hourly_rate || ""} onChange={handleProfileChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" placeholder="e.g. 75.00" />
                                 </div>
 
                                 <button type="submit" disabled={savingProfile} className="w-full py-2 bg-secondary text-white font-bold rounded hover:bg-secondary/90 disabled:opacity-50 mt-4 flex justify-center items-center gap-2">

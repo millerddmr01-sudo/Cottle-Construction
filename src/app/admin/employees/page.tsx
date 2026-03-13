@@ -163,7 +163,7 @@ export default function AdminEmployeesPage() {
                                         <select
                                             value={accountType}
                                             onChange={(e) => setAccountType(e.target.value as any)}
-                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black bg-white"
+                                            className="block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black font-medium bg-white"
                                         >
                                             <option value="employee">Employee</option>
                                             <option value="foreman">Foreman</option>
@@ -178,7 +178,7 @@ export default function AdminEmployeesPage() {
                                             type="text" required
                                             value={fullName}
                                             onChange={(e) => setFullName(e.target.value)}
-                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black"
+                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black font-medium"
                                         />
                                     </div>
                                 </div>
@@ -189,7 +189,7 @@ export default function AdminEmployeesPage() {
                                             type="email" required
                                             value={email}
                                             onChange={(e) => setEmail(e.target.value)}
-                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black"
+                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black font-medium"
                                         />
                                     </div>
                                 </div>
@@ -201,7 +201,7 @@ export default function AdminEmployeesPage() {
                                             value={password}
                                             onChange={(e) => setPassword(e.target.value)}
                                             placeholder="Provide to employee"
-                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black"
+                                            className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black font-medium"
                                         />
                                     </div>
                                 </div>

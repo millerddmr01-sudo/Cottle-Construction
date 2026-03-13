@@ -18,7 +18,8 @@ export default function HoursDashboardPage() {
     const [newEntry, setNewEntry] = useState({
         project_id: "",
         date: new Date().toISOString().split('T')[0],
-        hours_worked: ""
+        hours_worked: "",
+        notes: ""
     });
     const [submitting, setSubmitting] = useState(false);
 
@@ -69,7 +70,7 @@ export default function HoursDashboardPage() {
             if (role === 'admin' || role === 'foreman') {
                 const { data: approvalsData } = await supabase
                     .from("project_hours")
-                    .select("*, user_profiles(full_name), projects(project_name)")
+                    .select("*, user_profiles!employee_id(full_name), projects(project_name)")
                     .eq("approved", false)
                     .order("date", { ascending: true });
                 if (approvalsData) setPendingApprovals(approvalsData);
@@ -91,7 +92,8 @@ export default function HoursDashboardPage() {
                 project_id: newEntry.project_id,
                 employee_id: user.id,
                 date: newEntry.date,
-                hours_worked: parseFloat(newEntry.hours_worked)
+                hours_worked: parseFloat(newEntry.hours_worked),
+                notes: newEntry.notes
             })
             .select("*, projects(project_name)")
             .single();
@@ -100,7 +102,7 @@ export default function HoursDashboardPage() {
             alert("Error logging hours: " + error.message);
         } else if (data) {
             setMyHours([data, ...myHours]);
-            setNewEntry({ ...newEntry, hours_worked: "" });
+            setNewEntry({ ...newEntry, hours_worked: "", notes: "" });
 
             // If they are a foreman/admin, auto-add to their own approval list for convenience
             if (userRole === 'admin' || userRole === 'foreman') {
@@ -202,6 +204,16 @@ export default function HoursDashboardPage() {
                                         />
                                     </div>
                                     <div className="md:col-span-3">
+                                        <label className="block text-sm font-bold text-gray-700 mb-2">Notes / Accomplishments <span className="text-gray-400 font-normal">(Optional)</span></label>
+                                        <textarea
+                                            value={newEntry.notes}
+                                            onChange={e => setNewEntry({ ...newEntry, notes: e.target.value })}
+                                            className="w-full px-4 py-2 border border-gray-300 rounded-md focus:ring-primary focus:border-primary text-gray-900"
+                                            placeholder="What did you work on today?"
+                                            rows={2}
+                                        />
+                                    </div>
+                                    <div className="md:col-span-3">
                                         <button
                                             type="submit"
                                             disabled={submitting}
@@ -238,7 +250,10 @@ export default function HoursDashboardPage() {
                                             myHours.map((entry) => (
                                                 <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">{new Date(entry.date).toLocaleDateString()}</td>
-                                                    <td className="px-6 py-4 text-sm text-gray-900">{entry.projects?.project_name || 'Unknown'}</td>
+                                                    <td className="px-6 py-4 text-sm text-gray-900">
+                                                        <div className="font-medium">{entry.projects?.project_name || 'Unknown'}</div>
+                                                        {entry.notes && <div className="text-xs text-gray-500 mt-1 line-clamp-1">{entry.notes}</div>}
+                                                    </td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900 font-bold text-right">{entry.hours_worked}</td>
                                                     <td className="px-6 py-4 whitespace-nowrap text-center">
                                                         {entry.approved ? (
@@ -292,6 +307,11 @@ export default function HoursDashboardPage() {
                                                 <p className="text-sm text-gray-700 mb-3 truncate" title={entry.projects?.project_name}>
                                                     Project: <strong>{entry.projects?.project_name || 'Unknown'}</strong>
                                                 </p>
+                                                {entry.notes && (
+                                                    <p className="text-sm text-gray-600 mb-3 bg-gray-50 p-2 rounded italic text-sm border border-gray-100">
+                                                        "{entry.notes}"
+                                                    </p>
+                                                )}
                                                 <button
                                                     onClick={() => handleApprove(entry.id)}
                                                     disabled={approving === entry.id}
