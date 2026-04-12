@@ -2,9 +2,9 @@ import { Mail, MapPin, Phone } from "lucide-react";
 
 export default function ContactUsPage() {
     return (
-        <div className="py-20 px-4 max-w-5xl mx-auto">
-            <h1 className="text-4xl md:text-5xl font-extrabold text-secondary mb-6 text-center">Contact Us</h1>
-            <p className="text-xl text-gray-600 text-center mb-16 max-w-2xl mx-auto">
+        <div className="py-20 px-4 max-w-7xl mx-auto">
+            <h1 className="text-4xl md:text-5xl font-extrabold text-primary dark:text-accent mb-6 text-center">Contact Us</h1>
+            <p className="text-xl text-white text-center mb-16 max-w-2xl mx-auto">
                 Get in touch with us for estimates, questions, or specialized repair work.
             </p>
 
@@ -24,7 +24,7 @@ export default function ContactUsPage() {
                     </div>
                     <h3 className="text-xl font-bold text-secondary mb-4">Email</h3>
                     <p className="text-gray-600 mb-2">Send us a message.</p>
-                    <a href="mailto:info@cottleconstruction.com" className="text-lg font-bold text-primary hover:text-secondary transition-colors break-all">info@cottleconstruction.com</a>
+                    <a href="mailto:info@cottleconstruction.com" className="text-lg font-bold text-primary hover:text-secondary transition-colors break-words">info@cottleconstruction.com</a>
                 </div>
 
                 <div className="bg-white rounded-xl shadow-md p-8 border-t-4 border-primary text-center hover:-translate-y-1 transition-transform">

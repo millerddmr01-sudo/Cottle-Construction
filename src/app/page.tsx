@@ -22,15 +22,15 @@ export default function Home() {
 
         <div className="container mx-auto max-w-6xl relative z-10 flex flex-col items-center text-center">
           <Image
-            src="/HorizontalLogoLargeWhite.png"
+            src="/primary-logo-torch.jpg"
             alt="Cottle Construction"
             width={600}
             height={150}
-            className="mb-8 w-full max-w-[600px] h-auto"
+            className="mb-8 w-full max-w-[600px] h-auto rounded-lg shadow-lg bg-white/10"
             priority
           />
           <h1 className="text-4xl md:text-5xl lg:text-6xl font-extrabold mb-6 tracking-tight text-white">
-            Building Infrastructure<br /><span className="text-primary">You Can Depend On</span>
+            Building Infrastructure<br /><span className="text-accent">You Can Depend On</span>
           </h1>
           <p className="text-xl md:text-2xl text-gray-300 mb-10 max-w-3xl mx-auto">
             Specializing in high-pressure water supply lines, commercial excavation, and engineered solutions.
@@ -74,11 +74,11 @@ export default function Home() {
               <div className="absolute top-0 right-0 p-4 opacity-10">
                 <HardHat size={120} />
               </div>
-              <h3 className="text-2xl font-bold mb-4 relative z-10 text-primary">Why Choose Us?</h3>
+              <h3 className="text-2xl font-bold mb-4 relative z-10 text-accent">Why Choose Us?</h3>
               <p className="relative z-10 text-gray-300 leading-relaxed mb-6">
                 When a high-pressure line bursts or a specialized excavation is needed instantly, you need a team that acts fast, knows the regulations, and has the equipment to dig safely and efficiently without massive overhauls.
               </p>
-              <Link href="/portfolio" className="relative z-10 inline-flex items-center text-primary font-bold hover:text-white transition-colors group">
+              <Link href="/portfolio" className="relative z-10 inline-flex items-center text-accent font-bold hover:text-white transition-colors group">
                 View Our Work
                 <svg className="w-5 h-5 ml-2 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" /></svg>
               </Link>
@@ -111,7 +111,7 @@ export default function Home() {
                 <p className="text-gray-300 mb-6 flex-grow">
                   Installation and repair of high-pressure water supply lines, fire hydrants, fire risers, culinary lines, and water mains.
                 </p>
-                <Link href="/services#water-supply" className="text-primary font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
+                <Link href="/services#water-supply" className="text-accent font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
                   Learn More &rarr;
                 </Link>
               </div>
@@ -131,7 +131,7 @@ export default function Home() {
                 <p className="text-gray-300 mb-6 flex-grow">
                   Precision digging for sewer lines, foundations, footings, stormwater, holding systems, utilities, and radiant heat.
                 </p>
-                <Link href="/services#excavation" className="text-primary font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
+                <Link href="/services#excavation" className="text-accent font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
                   Learn More &rarr;
                 </Link>
               </div>
@@ -151,7 +151,7 @@ export default function Home() {
                 <p className="text-gray-300 mb-6 flex-grow">
                   Hydro excavating for sensitive utilities and construction of engineered retaining walls built to last.
                 </p>
-                <Link href="/services#specialized" className="text-primary font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
+                <Link href="/services#specialized" className="text-accent font-bold hover:text-white transition-colors inline-block mt-auto text-sm uppercase tracking-wider">
                   Learn More &rarr;
                 </Link>
               </div>

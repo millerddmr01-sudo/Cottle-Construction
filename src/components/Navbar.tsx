@@ -98,14 +98,14 @@ export default function Navbar() {
 
     return (
         <header className="bg-white text-black sticky top-0 z-50 shadow-md">
-            <div className="container mx-auto px-4 py-4 flex justify-between items-center">
+            <div className="container mx-auto px-4 py-0 flex justify-between items-center">
                 <Link href="/">
                     <Image
-                        src="/HorizontalLogoLarge.png"
+                        src="/primary-logo-torch.jpg"
                         alt="Cottle Construction Logo"
-                        width={250}
-                        height={60}
-                        className="h-12 w-auto object-contain"
+                        width={400}
+                        height={120}
+                        className="h-20 md:h-24 w-auto object-contain"
                         priority
                     />
                 </Link>
@@ -115,7 +115,7 @@ export default function Navbar() {
                     <Link href="/services" className="hover:text-primary transition-colors font-semibold">Services</Link>
                     <Link href="/portfolio" className="hover:text-primary transition-colors font-semibold">Portfolio</Link>
                     <Link href="/employment" className="hover:text-primary transition-colors font-semibold">Employment</Link>
-                    <Link href="/contact-us" className="bg-primary text-secondary px-4 py-2 rounded font-bold hover:bg-white transition-colors">Contact Us</Link>
+                    <Link href="/contact-us" className="bg-accent text-secondary px-4 py-2 rounded font-bold hover:bg-[#D5CFBE] transition-colors">Contact Us</Link>
 
                     {/* Hydration safe client rendering */}
                     {mounted ? (
@@ -130,12 +130,12 @@ export default function Navbar() {
                                     <User size={18} className="text-primary" />
                                     {user.email}
                                 </span>
-                                <button onClick={handleLogout} className="border-2 border-primary text-primary px-4 py-2 rounded font-bold hover:bg-primary hover:text-white transition-colors flex items-center gap-2 block bg-white">
+                                <button onClick={handleLogout} className="bg-accent text-secondary border-2 border-accent px-4 py-2 rounded font-bold hover:bg-[#D5CFBE] transition-colors flex items-center gap-2 block">
                                     <LogOut size={16} /> Logout
                                 </button>
                             </div>
                         ) : (
-                            <Link href="/login" className="border-2 border-primary text-primary px-4 py-2 rounded font-bold hover:bg-primary hover:text-white transition-colors bg-white">Login</Link>
+                            <Link href="/login" className="bg-accent text-secondary border-2 border-accent px-4 py-2 rounded font-bold hover:bg-[#D5CFBE] transition-colors">Login</Link>
                         )
                     ) : (
                         <div className="w-[82px] h-[40px] border-2 border-transparent px-4 py-2 rounded"></div>
