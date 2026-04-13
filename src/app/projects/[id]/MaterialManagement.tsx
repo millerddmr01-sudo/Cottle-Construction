@@ -17,7 +17,8 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
         quantity: "",
         unit_measure: "Ea",
         unit_cost: "",
-        status: "To be ordered"
+        status: "To be ordered",
+        taxable: true
     });
 
     useEffect(() => {
@@ -63,7 +64,8 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                     quantity: parseFloat(newMaterial.quantity),
                     unit_measure: newMaterial.unit_measure,
                     unit_cost: parseFloat(newMaterial.unit_cost),
-                    status: newMaterial.status
+                    status: newMaterial.status,
+                    taxable: newMaterial.taxable
                 })
                 .select()
                 .single();
@@ -72,7 +74,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                 alert("Error adding material: " + error.message);
             } else {
                 setMaterials([...materials, data]);
-                setNewMaterial({ material_name: "", quantity: "", unit_measure: "Ea", unit_cost: "", status: "To be ordered" });
+                setNewMaterial({ material_name: "", quantity: "", unit_measure: "Ea", unit_cost: "", status: "To be ordered", taxable: true });
             }
         } catch (err: any) {
             console.error("Material insertion error:", err);
@@ -113,6 +115,15 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
         }
     };
 
+    const handleTaxableChange = async (id: string, newTaxable: boolean) => {
+        setMaterials(materials.map(m => m.id === id ? { ...m, taxable: newTaxable } : m));
+        const { error } = await supabase.from("project_materials").update({ taxable: newTaxable }).eq("id", id);
+        if (error) {
+            alert("Status update failed: " + error.message);
+            window.location.reload();
+        }
+    };
+
     const totalCost = materials.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_cost)), 0);
 
     const getStatusStyle = (status: string) => {
@@ -137,6 +148,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                             <tr>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Item</th>
                                 <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Qty/Unit</th>
+                                <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Taxable</th>
                                 {canManageCosts && (
                                     <>
                                         <th scope="col" className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Unit Cost</th>
@@ -152,6 +164,20 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.material_name}</td>
                                     <td className="px-4 py-3 text-sm text-gray-600">{Number(item.quantity).toString()} {item.unit_measure || 'Ea'}</td>
+                                    <td className="px-4 py-3 text-sm text-gray-600">
+                                        {canEdit ? (
+                                            <button 
+                                                onClick={() => handleTaxableChange(item.id, item.taxable === false ? true : false)}
+                                                className={`px-2 py-1 rounded text-xs font-bold cursor-pointer transition-colors ${item.taxable !== false ? 'bg-green-100 text-green-800 hover:bg-green-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                                            >
+                                                {item.taxable !== false ? 'Taxable' : 'Non-Taxable'}
+                                            </button>
+                                        ) : (
+                                            <span className={`px-2 py-1 rounded text-xs font-bold ${item.taxable !== false ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-600'}`}>
+                                                {item.taxable !== false ? 'Taxable' : 'Non-Taxable'}
+                                            </span>
+                                        )}
+                                    </td>
                                     {canManageCosts && (
                                         <>
                                             <td className="px-4 py-3 text-sm text-gray-600">${Number(item.unit_cost).toFixed(2)} /{item.unit_measure || 'Ea'}</td>
@@ -189,7 +215,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                         {canManageCosts && materials.length > 0 && (
                             <tfoot className="bg-gray-50 border-t border-gray-200">
                                 <tr>
-                                    <td colSpan={3} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">Total Estimated Material Cost:</td>
+                                    <td colSpan={4} className="px-4 py-3 text-sm font-bold text-gray-900 text-right">Total Estimated Material Cost:</td>
                                     <td className="px-4 py-3 text-sm font-bold text-primary">${totalCost.toFixed(2)}</td>
                                     <td colSpan={canEdit ? 2 : 1}></td>
                                 </tr>
@@ -251,6 +277,12 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                 <option value="To be delivered">To be delivered</option>
                                 <option value="Delivered">Delivered</option>
                             </select>
+                        </div>
+                        <div className="lg:col-span-1 lg:pl-4 mb-2 lg:mb-0 pb-1 flex flex-col justify-end h-full">
+                            <label className="flex items-center gap-2 cursor-pointer">
+                                <input type="checkbox" checked={newMaterial.taxable} onChange={e => setNewMaterial({ ...newMaterial, taxable: e.target.checked })} className="w-4 h-4 text-primary focus:ring-primary border-gray-300 rounded cursor-pointer" />
+                                <span className="text-sm font-bold text-gray-700 tracking-wide">Taxable</span>
+                            </label>
                         </div>
                         <div className="lg:col-span-12 mt-2">
                             <button type="submit" disabled={adding} className="w-full sm:w-auto px-6 py-1.5 flex items-center justify-center gap-1 bg-primary text-white rounded-md text-sm font-bold hover:bg-primary/90 disabled:opacity-50 float-right">
