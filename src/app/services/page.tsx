@@ -52,6 +52,14 @@ export default function ServicesPage() {
                         <span>Safe, non-destructive digging using pressurized water and a vacuum system to expose sensitive underground utilities without causing damage.</span>
                     </div>
                 </section>
+                {/* Service 5 */}
+                <section className="bg-gray-50 rounded-2xl p-8 md:p-12 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+                    <h2 className="text-3xl font-bold text-primary mb-6">Site Works / Grading</h2>
+                    <p className="text-gray-700 text-lg leading-relaxed flex items-start text-secondary">
+                        <CheckCircle2 className="text-primary mr-3 shrink-0 mt-1" size={24} />
+                        <span>Site preparation, rough and finish grading, drainage shaping, final grade establishment, and preparation for hardscapes such as paving, concrete, walkways, and other finished surfaces.</span>
+                    </p>
+                </section>
             </div>
         </div>
     );
