@@ -213,7 +213,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                 if (editingId === item.id) {
                                     return (
                                         <tr key={`edit-${item.id}`} className="bg-gray-100">
-                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.material_name} onChange={e => setEditForm({...editForm, material_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3"><input className="w-full min-w-[250px] text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.material_name} onChange={e => setEditForm({...editForm, material_name: e.target.value})} /></td>
                                             <td className="px-4 py-3 flex items-center gap-1">
                                                 <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
                                                 <select className="text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.unit_measure} onChange={e => setEditForm({...editForm, unit_measure: e.target.value})}>
@@ -332,7 +332,7 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                 <form onSubmit={handleAdd} className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-md">
                     <h4 className="text-sm font-bold text-gray-900 mb-3 flex items-center gap-2"><Plus size={16} className="text-primary" /> Add Material</h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-12 gap-3 items-end">
-                        <div className="lg:col-span-4">
+                        <div className="lg:col-span-12">
                             <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Material Name <span className="text-red-500">*</span></label>
                             <input type="text" list="material-catalog" required value={newMaterial.material_name} onChange={handleNameChange} className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="e.g. 2x4x8 Lumber" autoComplete="off" />
                             <datalist id="material-catalog">

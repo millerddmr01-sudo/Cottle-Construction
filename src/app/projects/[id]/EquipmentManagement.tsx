@@ -243,7 +243,7 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
                                 if (editingId === item.id) {
                                     return (
                                         <tr key={`edit-${item.id}`} className="bg-gray-100">
-                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.equipment_name} onChange={e => setEditForm({...editForm, equipment_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3"><input className="w-full min-w-[250px] text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.equipment_name} onChange={e => setEditForm({...editForm, equipment_name: e.target.value})} /></td>
                                             <td className="px-4 py-3 flex gap-1">
                                                 <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.duration} onChange={e => setEditForm({...editForm, duration: e.target.value})} />
                                                 <select className="text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.duration_unit} onChange={e => setEditForm({...editForm, duration_unit: e.target.value})}>
