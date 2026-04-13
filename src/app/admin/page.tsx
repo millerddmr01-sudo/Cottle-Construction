@@ -49,7 +49,7 @@ export default function AdminDashboardPage() {
                 {/* Additional Admin Dashboard Cards placeholder */}
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mt-8">
                     <Link href="/admin/customers" className="bg-white rounded-xl shadow-sm border border-primary p-6 flex flex-col items-center justify-center min-h-[150px] hover:bg-primary/5 transition-colors group">
-                        <Users size={32} className="text-secondary mb-3 group-hover:scale-110 transition-transform" />
+                        <Users size={32} className="text-red-600 mb-3 group-hover:scale-110 transition-transform" />
                         <h3 className="font-bold text-gray-900 text-lg">Manage Customers</h3>
                         <p className="text-sm text-gray-500 text-center mt-1">Upload files and issue invoices.</p>
                     </Link>
@@ -64,7 +64,7 @@ export default function AdminDashboardPage() {
                         <p className="text-sm text-gray-500 text-center mt-1">Manage staff, roles, and certifications.</p>
                     </Link>
                     <Link href="/admin/materials" className="bg-white rounded-xl shadow-sm border border-primary p-6 flex flex-col items-center justify-center min-h-[150px] hover:bg-primary/5 transition-colors group">
-                        <FileText size={32} className="text-secondary mb-3 group-hover:scale-110 transition-transform" />
+                        <FileText size={32} className="text-red-600 mb-3 group-hover:scale-110 transition-transform" />
                         <h3 className="font-bold text-gray-900 text-lg">Manage Materials</h3>
                         <p className="text-sm text-gray-500 text-center mt-1">Manage material catalog and base costs.</p>
                     </Link>
