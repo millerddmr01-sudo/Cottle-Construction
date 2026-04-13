@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Trash2 } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Check, X } from "lucide-react";
 
 export default function EquipmentManagement({ projectId, userRole, supabase }: { projectId: string, userRole: string, supabase: any }) {
     const [equipment, setEquipment] = useState<any[]>([]);
@@ -9,6 +9,11 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
     const [activeBookings, setActiveBookings] = useState<any[]>([]);
+    
+    // Edit state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState<any>(null);
+    const [saving, setSaving] = useState(false);
 
     const canManageCosts = userRole === 'admin' || userRole === 'foreman';
     const canEdit = userRole === 'admin' || userRole === 'foreman';
@@ -158,6 +163,55 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
         if (error) alert("Status update failed: " + error.message);
     };
 
+    const handleEditClick = (item: any) => {
+        setEditingId(item.id);
+        setEditForm({ ...item, 
+            start_date: item.start_date ? item.start_date.split('T')[0] : '', 
+            end_date: item.end_date ? item.end_date.split('T')[0] : '' 
+        });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditForm(null);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editForm) return;
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from("project_equipment")
+                .update({
+                    equipment_name: editForm.equipment_name,
+                    duration: parseFloat(editForm.duration),
+                    duration_unit: editForm.duration_unit,
+                    unit_cost: parseFloat(editForm.unit_cost),
+                    source: editForm.source || null,
+                    status: editForm.status,
+                    start_date: editForm.start_date || null,
+                    end_date: editForm.end_date || null
+                })
+                .eq("id", editForm.id);
+
+            if (error) {
+                alert("Error saving: " + error.message);
+            } else {
+                setEquipment(equipment.map(e => e.id === editForm.id ? { 
+                    ...editForm, 
+                    duration: parseFloat(editForm.duration), 
+                    unit_cost: parseFloat(editForm.unit_cost) 
+                } : e));
+                setEditingId(null);
+                setEditForm(null);
+            }
+        } catch (err: any) {
+            alert("Exception tracking edit: " + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const totalCost = equipment.reduce((sum, item) => sum + (Number(item.duration) * Number(item.unit_cost)), 0);
 
     if (loading) return <div className="text-sm text-gray-500 flex items-center"><Loader2 size={16} className="animate-spin mr-2" /> Loading equipment...</div>;
@@ -185,7 +239,54 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {equipment.map((item) => (
+                            {equipment.map((item) => {
+                                if (editingId === item.id) {
+                                    return (
+                                        <tr key={`edit-${item.id}`} className="bg-gray-100">
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.equipment_name} onChange={e => setEditForm({...editForm, equipment_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3 flex gap-1">
+                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300" value={editForm.duration} onChange={e => setEditForm({...editForm, duration: e.target.value})} />
+                                                <select className="text-sm p-1.5 border rounded border-gray-300" value={editForm.duration_unit} onChange={e => setEditForm({...editForm, duration_unit: e.target.value})}>
+                                                    <option value="Day">Day</option>
+                                                    <option value="Week">Week</option>
+                                                    <option value="Month">Month</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <div className="flex flex-col gap-1">
+                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300" value={editForm.start_date} onChange={e => setEditForm({...editForm, start_date: e.target.value})} />
+                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300" value={editForm.end_date} onChange={e => setEditForm({...editForm, end_date: e.target.value})} />
+                                                </div>
+                                            </td>
+                                            {canManageCosts && (
+                                                <>
+                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-20 text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">${(Number(editForm.duration) * Number(editForm.unit_cost)).toFixed(2)}</td>
+                                                </>
+                                            )}
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.source || ''} onChange={e => setEditForm({...editForm, source: e.target.value})} placeholder="Source" /></td>
+                                            <td className="px-4 py-3">
+                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300">
+                                                    <option value="To be ordered">To be ordered</option>
+                                                    <option value="Ordered">Ordered</option>
+                                                    <option value="Delivered">Delivered</option>
+                                                    <option value="Returned">Returned</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-2 text-sm">
+                                                    <button onClick={handleSaveEdit} disabled={saving} className="text-green-600 hover:text-green-800 bg-green-100 p-1.5 rounded disabled:opacity-50" title="Save">
+                                                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                                    </button>
+                                                    <button onClick={handleCancelEdit} disabled={saving} className="text-gray-600 hover:text-gray-800 bg-gray-200 p-1.5 rounded disabled:opacity-50" title="Cancel">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+                                return (
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.equipment_name}</td>
                                     <td className="px-4 py-3 text-sm text-gray-600">
@@ -215,14 +316,20 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
                                         </select>
                                     </td>
                                     {canEdit && (
-                                        <td className="px-4 py-3 text-right text-sm">
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 p-1">
-                                                <Trash2 size={16} />
-                                            </button>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2 text-sm">
+                                                <button onClick={() => handleEditClick(item)} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition-colors" title="Edit">
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Delete">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     )}
                                 </tr>
-                            ))}
+                                )
+                            })}
                         </tbody>
                         {canManageCosts && equipment.length > 0 && (
                             <tfoot className="bg-gray-50 border-t border-gray-200">

@@ -1,13 +1,18 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Loader2, Plus, Trash2, Calculator } from "lucide-react";
+import { Loader2, Plus, Trash2, Edit2, Check, X } from "lucide-react";
 
 export default function MaterialManagement({ projectId, userRole, supabase }: { projectId: string, userRole: string, supabase: any }) {
     const [materials, setMaterials] = useState<any[]>([]);
     const [catalog, setCatalog] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [adding, setAdding] = useState(false);
+    
+    // Edit state
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editForm, setEditForm] = useState<any>(null);
+    const [saving, setSaving] = useState(false);
 
     const canManageCosts = userRole === 'admin' || userRole === 'foreman';
     const canEdit = userRole === 'admin' || userRole === 'foreman';
@@ -124,6 +129,50 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
         }
     };
 
+    const handleEditClick = (item: any) => {
+        setEditingId(item.id);
+        setEditForm({ ...item });
+    };
+
+    const handleCancelEdit = () => {
+        setEditingId(null);
+        setEditForm(null);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editForm) return;
+        setSaving(true);
+        try {
+            const { error } = await supabase
+                .from("project_materials")
+                .update({
+                    material_name: editForm.material_name,
+                    quantity: parseFloat(editForm.quantity),
+                    unit_measure: editForm.unit_measure,
+                    unit_cost: parseFloat(editForm.unit_cost),
+                    status: editForm.status,
+                    taxable: editForm.taxable
+                })
+                .eq("id", editForm.id);
+
+            if (error) {
+                alert("Error saving: " + error.message);
+            } else {
+                setMaterials(materials.map(m => m.id === editForm.id ? { 
+                    ...editForm, 
+                    quantity: parseFloat(editForm.quantity), 
+                    unit_cost: parseFloat(editForm.unit_cost) 
+                } : m));
+                setEditingId(null);
+                setEditForm(null);
+            }
+        } catch (err: any) {
+            alert("Exception tracking edit: " + err.message);
+        } finally {
+            setSaving(false);
+        }
+    };
+
     const totalCost = materials.reduce((sum, item) => sum + (Number(item.quantity) * Number(item.unit_cost)), 0);
 
     const getStatusStyle = (status: string) => {
@@ -160,7 +209,50 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {materials.map((item) => (
+                            {materials.map((item) => {
+                                if (editingId === item.id) {
+                                    return (
+                                        <tr key={`edit-${item.id}`} className="bg-gray-100">
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.material_name} onChange={e => setEditForm({...editForm, material_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3 flex items-center gap-1">
+                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
+                                                <select className="text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_measure} onChange={e => setEditForm({...editForm, unit_measure: e.target.value})}>
+                                                    <option value="Ea">Ea</option><option value="Ln Ft">Ln Ft</option><option value="Sq Ft">Sq Ft</option><option value="Cu Yd">Cu Yd</option><option value="Tons">Tons</option><option value="Lbs">Lbs</option><option value="Bags">Bags</option><option value="Boxes">Boxes</option><option value="Rolls">Rolls</option><option value="Sheets">Sheets</option><option value="Pieces">Pieces</option><option value="Gal">Gal</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-3">
+                                                <label className="flex items-center justify-center">
+                                                    <input type="checkbox" checked={editForm.taxable} onChange={e => setEditForm({...editForm, taxable: e.target.checked})} className="w-4 h-4 text-primary rounded" />
+                                                </label>
+                                            </td>
+                                            {canManageCosts && (
+                                                <>
+                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-24 text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
+                                                    <td className="px-4 py-3 text-sm text-gray-900 font-medium">${(Number(editForm.quantity) * Number(editForm.unit_cost)).toFixed(2)}</td>
+                                                </>
+                                            )}
+                                            <td className="px-4 py-3">
+                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300">
+                                                    <option value="To be ordered">To be ordered</option>
+                                                    <option value="Ordered">Ordered</option>
+                                                    <option value="To be delivered">To be delivered</option>
+                                                    <option value="Delivered">Delivered</option>
+                                                </select>
+                                            </td>
+                                            <td className="px-4 py-3 text-right">
+                                                <div className="flex justify-end gap-2">
+                                                    <button onClick={handleSaveEdit} disabled={saving} className="text-green-600 hover:text-green-800 bg-green-100 p-1.5 rounded disabled:opacity-50" title="Save">
+                                                        {saving ? <Loader2 size={16} className="animate-spin" /> : <Check size={16} />}
+                                                    </button>
+                                                    <button onClick={handleCancelEdit} disabled={saving} className="text-gray-600 hover:text-gray-800 bg-gray-200 p-1.5 rounded disabled:opacity-50" title="Cancel">
+                                                        <X size={16} />
+                                                    </button>
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    );
+                                }
+                                return (
                                 <tr key={item.id} className="hover:bg-gray-50">
                                     <td className="px-4 py-3 text-sm font-medium text-gray-900">{item.material_name}</td>
                                     <td className="px-4 py-3 text-sm text-gray-600">{Number(item.quantity).toString()} {item.unit_measure || 'Ea'}</td>
@@ -203,14 +295,20 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                         )}
                                     </td>
                                     {canEdit && (
-                                        <td className="px-4 py-3 text-right text-sm">
-                                            <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 p-1">
-                                                <Trash2 size={16} />
-                                            </button>
+                                        <td className="px-4 py-3 text-right">
+                                            <div className="flex justify-end gap-2 text-sm">
+                                                <button onClick={() => handleEditClick(item)} className="text-blue-500 hover:text-blue-700 bg-blue-50 hover:bg-blue-100 p-1.5 rounded transition-colors" title="Edit">
+                                                    <Edit2 size={16} />
+                                                </button>
+                                                <button onClick={() => handleDelete(item.id)} className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded transition-colors" title="Delete">
+                                                    <Trash2 size={16} />
+                                                </button>
+                                            </div>
                                         </td>
                                     )}
                                 </tr>
-                            ))}
+                                )
+                            })}
                         </tbody>
                         {canManageCosts && materials.length > 0 && (
                             <tfoot className="bg-gray-50 border-t border-gray-200">
