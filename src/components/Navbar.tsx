@@ -110,9 +110,10 @@ export default function Navbar() {
                     />
                 </Link>
 
-                {/* Desktop Navigation */}
-                <nav className="hidden md:flex space-x-6 items-center">
-                    <Link href="/services" className="hover:text-primary transition-colors font-semibold">Services</Link>
+                {/* Desktop Navigation & License Info */}
+                <div className="hidden md:flex flex-col items-end gap-1.5">
+                    <nav className="flex space-x-6 items-center">
+                        <Link href="/services" className="hover:text-primary transition-colors font-semibold">Services</Link>
                     <Link href="/portfolio" className="hover:text-primary transition-colors font-semibold">Portfolio</Link>
                     <Link href="/employment" className="hover:text-primary transition-colors font-semibold">Employment</Link>
                     <Link href="/contact-us" className="bg-accent text-secondary px-4 py-2 rounded font-bold hover:bg-[#D5CFBE] transition-colors">Contact Us</Link>
@@ -140,7 +141,11 @@ export default function Navbar() {
                     ) : (
                         <div className="w-[82px] h-[40px] border-2 border-transparent px-4 py-2 rounded"></div>
                     )}
-                </nav>
+                    </nav>
+                    <span className="text-xs font-bold text-gray-500 tracking-wider">
+                        Contractor License # - 12784950-5501
+                    </span>
+                </div>
 
                 {/* Mobile Navigation Toggle (placeholder for future state logic) */}
                 <button className="md:hidden text-black hover:text-primary">
