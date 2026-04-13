@@ -62,9 +62,9 @@ export default function TabOverview({ project, userRole, supabase, setProject }:
                 )}
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-                {/* Left Column - Details */}
-                <div className="lg:col-span-7 space-y-8">
+            <div className="space-y-12">
+                {/* Top Section - Details (Full Width) */}
+                <div className="space-y-10">
                     <div>
                         <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
                             <Hammer size={16} className="text-gray-400" /> Material Requirements
@@ -107,53 +107,58 @@ export default function TabOverview({ project, userRole, supabase, setProject }:
                     </div>
                 </div>
 
-                {/* Right Column - Status, Hours, Notes & Measurements */}
-                <div className="lg:col-span-5 space-y-6">
-                    <div className="grid grid-cols-1 gap-4">
-                        <div>
-                            <label className="block text-sm font-bold text-gray-700 mb-1">Labor Hours</label>
-                            {canEdit ? (
-                                <input type="number" step="0.5" name="estimated_hours" value={formData.estimated_hours} onChange={handleChange} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="e.g. 120" />
-                            ) : (
-                                <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100">{project.estimated_hours || 'N/A'}</div>
+                {/* Bottom Section - Status, Hours, Notes & Measurements */}
+                <div className="pt-8 border-t border-gray-200">
+                    <h3 className="text-lg font-bold text-gray-900 mb-6">Additional Project Details</h3>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                        <div className="space-y-6">
+                            <div>
+                                <label className="block text-sm font-bold text-gray-700 mb-2">Labor Hours</label>
+                                {canEdit ? (
+                                    <input type="number" step="0.5" name="estimated_hours" value={formData.estimated_hours} onChange={handleChange} className="w-full lg:w-1/2 px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="e.g. 120" />
+                                ) : (
+                                    <div className="p-3 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100 w-full lg:w-1/2">{project.estimated_hours || 'N/A'}</div>
+                                )}
+                            </div>
+
+                            <div>
+                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <Map size={16} className="text-gray-400" /> Site Measurements
+                                </h3>
+                                {canEdit ? (
+                                    <textarea name="measurements" value={formData.measurements} onChange={handleChange} rows={5} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="E.g., 200 sq ft deck, 45 linear ft railing..." />
+                                ) : (
+                                    <div className="p-4 bg-gray-50 rounded-lg whitespace-pre-wrap text-sm text-gray-700 border border-gray-100 min-h-[100px]">
+                                        {project.measurements || <span className="text-gray-400 italic">No measurements recorded.</span>}
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+
+                        <div className="space-y-6 flex flex-col">
+                            <div className="flex-grow">
+                                <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
+                                    <FileText size={16} className="text-gray-400" /> General Notes
+                                </h3>
+                                {canEdit ? (
+                                    <textarea name="project_notes" value={formData.project_notes} onChange={handleChange} rows={9} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="Any special instructions or hazards..." />
+                                ) : (
+                                    <div className="p-4 bg-gray-50 rounded-lg whitespace-pre-wrap text-sm text-gray-700 border border-gray-100 min-h-[100px] h-full">
+                                        {project.project_notes || <span className="text-gray-400 italic">No additional notes.</span>}
+                                    </div>
+                                )}
+                            </div>
+
+                            {canEdit && hasChanges && (
+                                <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm border border-blue-200 flex items-center justify-between shadow-sm mt-4">
+                                    <span className="font-medium">You have unsaved changes.</span>
+                                    <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors">
+                                        {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Save Details
+                                    </button>
+                                </div>
                             )}
                         </div>
                     </div>
-
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <Map size={16} className="text-gray-400" /> Site Measurements
-                        </h3>
-                        {canEdit ? (
-                            <textarea name="measurements" value={formData.measurements} onChange={handleChange} rows={4} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="E.g., 200 sq ft deck, 45 linear ft railing..." />
-                        ) : (
-                            <div className="p-4 bg-gray-50 rounded-lg whitespace-pre-wrap text-sm text-gray-700 border border-gray-100 min-h-[100px]">
-                                {project.measurements || <span className="text-gray-400 italic">No measurements recorded.</span>}
-                            </div>
-                        )}
-                    </div>
-
-                    <div>
-                        <h3 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-2 flex items-center gap-2">
-                            <FileText size={16} className="text-gray-400" /> General Notes
-                        </h3>
-                        {canEdit ? (
-                            <textarea name="project_notes" value={formData.project_notes} onChange={handleChange} rows={6} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 bg-white focus:ring-primary focus:border-primary" placeholder="Any special instructions or hazards..." />
-                        ) : (
-                            <div className="p-4 bg-gray-50 rounded-lg whitespace-pre-wrap text-sm text-gray-700 border border-gray-100 min-h-[100px]">
-                                {project.project_notes || <span className="text-gray-400 italic">No additional notes.</span>}
-                            </div>
-                        )}
-                    </div>
-
-                    {canEdit && hasChanges && (
-                        <div className="bg-blue-50 text-blue-800 p-3 rounded-md text-sm border border-blue-200 flex items-center justify-between shadow-sm">
-                            <span className="font-medium">You have unsaved changes.</span>
-                            <button onClick={handleSave} disabled={saving} className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 disabled:opacity-50 transition-colors">
-                                {saving ? <Loader2 className="animate-spin" size={16} /> : <Save size={16} />} Save All
-                            </button>
-                        </div>
-                    )}
                 </div>
             </div>
         </div>
