@@ -15,6 +15,20 @@ export default function AdminSubcontractorsPage() {
     const [loading, setLoading] = useState(true);
     const [selectedSub, setSelectedSub] = useState<any | null>(null);
 
+    // Subcontractor Creation State
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [newSubForm, setNewSubForm] = useState({
+        email: "", password: "", fullName: "", companyName: "", phoneNumber: ""
+    });
+
+    // Subcontractor Edit State
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editSubForm, setEditSubForm] = useState({
+        full_name: "", company_name: "", phone_number: ""
+    });
+
     // Subcontractor Details Data
     const [docs, setDocs] = useState<any[]>([]);
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -59,6 +73,102 @@ export default function AdminSubcontractorsPage() {
         checkAdmin();
         return () => { isMounted = false; };
     }, [router, supabase]);
+
+    const handleCreateSubcontractor = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setCreating(true);
+        setCreateError(null);
+        setSuccessMessage(null);
+
+        try {
+            const response = await fetch("/api/admin/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: newSubForm.email,
+                    password: newSubForm.password,
+                    fullName: newSubForm.fullName,
+                    companyName: newSubForm.companyName,
+                    phoneNumber: newSubForm.phoneNumber,
+                    accountType: "subcontractor",
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || "Failed to create subcontractor");
+
+            setSuccessMessage(`Successfully created account for ${newSubForm.email}`);
+
+            const createdSub = {
+                id: data.user.id,
+                email: newSubForm.email,
+                full_name: newSubForm.fullName,
+                company_name: newSubForm.companyName || null,
+                phone_number: newSubForm.phoneNumber || null,
+                role: "subcontractor",
+            };
+            setSubcontractors(prev => [...prev, createdSub].sort((a, b) => ((a.company_name || a.full_name) || "").localeCompare((b.company_name || b.full_name) || "")));
+
+            setNewSubForm({ email: "", password: "", fullName: "", companyName: "", phoneNumber: "" });
+        } catch (err: any) {
+            setCreateError(err.message);
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDeleteSubcontractor = async (id: string, name: string) => {
+        if (!confirm(`Are you absolutely sure you want to delete subcontractor ${name}? This will permanently remove their access, documents, and invoices.`)) return;
+
+        try {
+            const res = await fetch("/api/admin/delete-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: id })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setSubcontractors(subcontractors.filter(c => c.id !== id));
+        } catch (err: any) {
+            alert("Error deleting subcontractor: " + err.message);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingId) return;
+        try {
+            const { data, error } = await supabase
+                .from("user_profiles")
+                .update({
+                    full_name: editSubForm.full_name,
+                    company_name: editSubForm.company_name,
+                    phone_number: editSubForm.phone_number
+                })
+                .eq("id", editingId)
+                .select()
+                .single();
+
+            if (error) {
+                alert("Error updating subcontractor: " + error.message);
+            } else if (data) {
+                setSubcontractors(subcontractors.map(c => c.id === editingId ? data : c).sort((a, b) => ((a.company_name || a.full_name) || "").localeCompare((b.company_name || b.full_name) || "")));
+                setEditingId(null);
+            }
+        } catch (err: any) {
+            alert("Exception executing update: " + err.message);
+        }
+    };
+
+    const startEditing = (sub: any) => {
+        setEditingId(sub.id);
+        setEditSubForm({
+            full_name: sub.full_name || "",
+            company_name: sub.company_name || "",
+            phone_number: sub.phone_number || ""
+        });
+    };
 
     const handleSelectSub = async (sub: any) => {
         setSelectedSub(sub);
@@ -128,7 +238,57 @@ export default function AdminSubcontractorsPage() {
                                 </Link>
                             </div>
                             <h1 className="text-3xl font-extrabold text-secondary mb-2">Manage Subcontractors</h1>
-                            <p className="text-gray-600">Select a subcontractor to view their documents and invoices.</p>
+                            <p className="text-gray-600">Register new subcontractors, edit profiles, or select one to view documents and invoices.</p>
+                        </div>
+                    </div>
+
+                    {/* Create Subcontractor Account Form */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                        <div className="border-b border-gray-200 px-6 py-4 bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2">Add New Subcontractor</h2>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={handleCreateSubcontractor} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Contact Full Name <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="text" required value={newSubForm.fullName} onChange={e => setNewSubForm({ ...newSubForm, fullName: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Email Address <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="email" required value={newSubForm.email} onChange={e => setNewSubForm({ ...newSubForm, email: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Temporary Password <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="text" required minLength={6} value={newSubForm.password} onChange={e => setNewSubForm({ ...newSubForm, password: e.target.value })} placeholder="Min 6 characters" className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                                        <div className="mt-1">
+                                            <input type="text" value={newSubForm.companyName} onChange={e => setNewSubForm({ ...newSubForm, companyName: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                                        <div className="mt-1">
+                                            <input type="text" value={newSubForm.phoneNumber} onChange={e => setNewSubForm({ ...newSubForm, phoneNumber: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                </div>
+                                {createError && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-200">{createError}</div>}
+                                {successMessage && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm border border-green-200">{successMessage}</div>}
+                                <div className="flex justify-end pt-2">
+                                    <button type="submit" disabled={creating} className="flex justify-center items-center py-2 px-6 border-2 border-primary rounded-md shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
+                                        {creating ? <Loader2 size={16} className="animate-spin mr-2" /> : null} {creating ? "Creating..." : "Create Account"}
+                                    </button>
+                                </div>
+                            </form>
                         </div>
                     </div>
 
@@ -136,29 +296,70 @@ export default function AdminSubcontractorsPage() {
                         {subcontractors.length === 0 ? (
                             <div className="p-12 text-center text-gray-500 italic">No subcontractors found in the system.</div>
                         ) : (
-                            <ul className="divide-y divide-gray-200">
-                                {subcontractors.map(sub => (
-                                    <li key={sub.id}>
-                                        <button
-                                            onClick={() => handleSelectSub(sub)}
-                                            className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex justify-between items-center group"
-                                        >
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
-                                                    {sub.company_name || sub.full_name || sub.email}
-                                                </h3>
-                                                <div className="text-sm text-gray-500 mt-1 flex gap-4">
-                                                    <span>{sub.email}</span>
-                                                    {sub.phone_number && <span>• {sub.phone_number}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-semibold text-sm">
-                                                View Details <ChevronLeft size={16} className="rotate-180" />
-                                            </div>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Subcontractor/Contact</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {subcontractors.map(sub => (
+                                            editingId === sub.id ? (
+                                                <tr key={`edit-${sub.id}`} className="bg-blue-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="font-bold text-gray-900 text-sm mb-1">
+                                                            <input type="text" value={editSubForm.full_name} onChange={e => setEditSubForm({ ...editSubForm, full_name: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Contact Full Name" />
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">{sub.email} <span className="italic text-xs ml-1">(Cannot edit email inline)</span></div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <input type="text" value={editSubForm.company_name} onChange={e => setEditSubForm({ ...editSubForm, company_name: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Company Name" />
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <input type="text" value={editSubForm.phone_number} onChange={e => setEditSubForm({ ...editSubForm, phone_number: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Phone Number" />
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button onClick={handleSaveEdit} className="text-green-600 hover:text-green-800 p-1.5 bg-green-100 hover:bg-green-200 rounded transition-colors"><CheckCircle size={18} /></button>
+                                                            <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-700 p-1.5 bg-gray-200 hover:bg-gray-300 rounded transition-colors"><XCircle size={18} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <tr key={sub.id} className="hover:bg-gray-50 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-bold text-gray-900 group-hover:text-primary transition-colors text-lg">{sub.full_name || sub.email}</div>
+                                                        <div className="text-sm text-gray-500 mt-0.5">{sub.email}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 font-medium">
+                                                        {sub.company_name || <span className="text-gray-400 italic font-normal">None</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                        {sub.phone_number || <span className="text-gray-400 italic">None</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-4">
+                                                            <button onClick={() => handleSelectSub(sub)} className="text-primary hover:text-primary/80 font-bold flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-md hover:bg-primary/20 transition-colors">
+                                                                Manage <ChevronLeft size={16} className="rotate-180" />
+                                                            </button>
+                                                            <button onClick={() => startEditing(sub)} className="text-blue-500 hover:text-blue-700" title="Quick Edit Profile">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                                            </button>
+                                                            <button onClick={() => handleDeleteSubcontractor(sub.id, sub.company_name || sub.full_name || sub.email)} className="text-red-500 hover:text-red-700" title="Delete Subcontractor">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>
