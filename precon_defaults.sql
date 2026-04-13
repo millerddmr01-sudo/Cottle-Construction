@@ -7,6 +7,7 @@ CREATE OR REPLACE FUNCTION public.create_default_precon_checklists()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 SECURITY DEFINER
+SET search_path = public
 AS $$
 DECLARE
     section_1_id UUID;

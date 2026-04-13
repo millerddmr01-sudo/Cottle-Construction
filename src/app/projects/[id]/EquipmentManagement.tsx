@@ -106,29 +106,35 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
         e.preventDefault();
         setAdding(true);
 
-        const { data, error } = await supabase
-            .from("project_equipment")
-            .insert({
-                project_id: projectId,
-                equipment_name: newEquipment.equipment_name,
-                duration: parseFloat(newEquipment.duration),
-                duration_unit: newEquipment.duration_unit,
-                unit_cost: parseFloat(newEquipment.unit_cost),
-                source: newEquipment.source || null,
-                status: newEquipment.status,
-                start_date: newEquipment.start_date || null,
-                end_date: newEquipment.end_date || null
-            })
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from("project_equipment")
+                .insert({
+                    project_id: projectId,
+                    equipment_name: newEquipment.equipment_name,
+                    duration: parseFloat(newEquipment.duration),
+                    duration_unit: newEquipment.duration_unit,
+                    unit_cost: parseFloat(newEquipment.unit_cost),
+                    source: newEquipment.source || null,
+                    status: newEquipment.status,
+                    start_date: newEquipment.start_date || null,
+                    end_date: newEquipment.end_date || null
+                })
+                .select()
+                .single();
 
-        if (error) {
-            alert("Error adding equipment: " + error.message);
-        } else {
-            setEquipment([...equipment, data]);
-            setNewEquipment({ equipment_name: "", duration: "", duration_unit: "Day", unit_cost: "", source: "", status: "To be ordered", start_date: "", end_date: "" });
+            if (error) {
+                alert("Error adding equipment: " + error.message);
+            } else {
+                setEquipment([...equipment, data]);
+                setNewEquipment({ equipment_name: "", duration: "", duration_unit: "Day", unit_cost: "", source: "", status: "To be ordered", start_date: "", end_date: "" });
+            }
+        } catch (err: any) {
+            console.error("Equipment insertion error:", err);
+            alert("An unexpected error occurred: " + (err.message || JSON.stringify(err)));
+        } finally {
+            setAdding(false);
         }
-        setAdding(false);
     };
 
     const handleDelete = async (id: string) => {

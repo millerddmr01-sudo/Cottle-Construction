@@ -54,26 +54,32 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
         e.preventDefault();
         setAdding(true);
 
-        const { data, error } = await supabase
-            .from("project_materials")
-            .insert({
-                project_id: projectId,
-                material_name: newMaterial.material_name,
-                quantity: parseFloat(newMaterial.quantity),
-                unit_measure: newMaterial.unit_measure,
-                unit_cost: parseFloat(newMaterial.unit_cost),
-                status: newMaterial.status
-            })
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from("project_materials")
+                .insert({
+                    project_id: projectId,
+                    material_name: newMaterial.material_name,
+                    quantity: parseFloat(newMaterial.quantity),
+                    unit_measure: newMaterial.unit_measure,
+                    unit_cost: parseFloat(newMaterial.unit_cost),
+                    status: newMaterial.status
+                })
+                .select()
+                .single();
 
-        if (error) {
-            alert("Error adding material: " + error.message);
-        } else {
-            setMaterials([...materials, data]);
-            setNewMaterial({ material_name: "", quantity: "", unit_measure: "Ea", unit_cost: "", status: "To be ordered" });
+            if (error) {
+                alert("Error adding material: " + error.message);
+            } else {
+                setMaterials([...materials, data]);
+                setNewMaterial({ material_name: "", quantity: "", unit_measure: "Ea", unit_cost: "", status: "To be ordered" });
+            }
+        } catch (err: any) {
+            console.error("Material insertion error:", err);
+            alert("An unexpected error occurred: " + (err.message || JSON.stringify(err)));
+        } finally {
+            setAdding(false);
         }
-        setAdding(false);
     };
 
     const handleDelete = async (id: string) => {
