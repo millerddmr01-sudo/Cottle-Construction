@@ -213,10 +213,10 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                 if (editingId === item.id) {
                                     return (
                                         <tr key={`edit-${item.id}`} className="bg-gray-100">
-                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.material_name} onChange={e => setEditForm({...editForm, material_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.material_name} onChange={e => setEditForm({...editForm, material_name: e.target.value})} /></td>
                                             <td className="px-4 py-3 flex items-center gap-1">
-                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
-                                                <select className="text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_measure} onChange={e => setEditForm({...editForm, unit_measure: e.target.value})}>
+                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.quantity} onChange={e => setEditForm({...editForm, quantity: e.target.value})} />
+                                                <select className="text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.unit_measure} onChange={e => setEditForm({...editForm, unit_measure: e.target.value})}>
                                                     <option value="Ea">Ea</option><option value="Ln Ft">Ln Ft</option><option value="Sq Ft">Sq Ft</option><option value="Cu Yd">Cu Yd</option><option value="Tons">Tons</option><option value="Lbs">Lbs</option><option value="Bags">Bags</option><option value="Boxes">Boxes</option><option value="Rolls">Rolls</option><option value="Sheets">Sheets</option><option value="Pieces">Pieces</option><option value="Gal">Gal</option>
                                                 </select>
                                             </td>
@@ -227,12 +227,12 @@ export default function MaterialManagement({ projectId, userRole, supabase }: { 
                                             </td>
                                             {canManageCosts && (
                                                 <>
-                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-24 text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
+                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-24 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
                                                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">${(Number(editForm.quantity) * Number(editForm.unit_cost)).toFixed(2)}</td>
                                                 </>
                                             )}
                                             <td className="px-4 py-3">
-                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300">
+                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none">
                                                     <option value="To be ordered">To be ordered</option>
                                                     <option value="Ordered">Ordered</option>
                                                     <option value="To be delivered">To be delivered</option>

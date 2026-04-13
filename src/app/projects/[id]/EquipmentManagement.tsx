@@ -243,10 +243,10 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
                                 if (editingId === item.id) {
                                     return (
                                         <tr key={`edit-${item.id}`} className="bg-gray-100">
-                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.equipment_name} onChange={e => setEditForm({...editForm, equipment_name: e.target.value})} /></td>
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.equipment_name} onChange={e => setEditForm({...editForm, equipment_name: e.target.value})} /></td>
                                             <td className="px-4 py-3 flex gap-1">
-                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300" value={editForm.duration} onChange={e => setEditForm({...editForm, duration: e.target.value})} />
-                                                <select className="text-sm p-1.5 border rounded border-gray-300" value={editForm.duration_unit} onChange={e => setEditForm({...editForm, duration_unit: e.target.value})}>
+                                                <input type="number" step="any" className="w-16 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.duration} onChange={e => setEditForm({...editForm, duration: e.target.value})} />
+                                                <select className="text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.duration_unit} onChange={e => setEditForm({...editForm, duration_unit: e.target.value})}>
                                                     <option value="Day">Day</option>
                                                     <option value="Week">Week</option>
                                                     <option value="Month">Month</option>
@@ -254,19 +254,19 @@ export default function EquipmentManagement({ projectId, userRole, supabase }: {
                                             </td>
                                             <td className="px-4 py-3">
                                                 <div className="flex flex-col gap-1">
-                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300" value={editForm.start_date} onChange={e => setEditForm({...editForm, start_date: e.target.value})} />
-                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300" value={editForm.end_date} onChange={e => setEditForm({...editForm, end_date: e.target.value})} />
+                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.start_date} onChange={e => setEditForm({...editForm, start_date: e.target.value})} />
+                                                    <input type="date" className="text-sm p-1 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.end_date} onChange={e => setEditForm({...editForm, end_date: e.target.value})} />
                                                 </div>
                                             </td>
                                             {canManageCosts && (
                                                 <>
-                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-20 text-sm p-1.5 border rounded border-gray-300" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
+                                                    <td className="px-4 py-3"><input type="number" step="0.01" className="w-20 text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.unit_cost} onChange={e => setEditForm({...editForm, unit_cost: e.target.value})} /></td>
                                                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">${(Number(editForm.duration) * Number(editForm.unit_cost)).toFixed(2)}</td>
                                                 </>
                                             )}
-                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300" value={editForm.source || ''} onChange={e => setEditForm({...editForm, source: e.target.value})} placeholder="Source" /></td>
+                                            <td className="px-4 py-3"><input className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none" value={editForm.source || ''} onChange={e => setEditForm({...editForm, source: e.target.value})} placeholder="Source" /></td>
                                             <td className="px-4 py-3">
-                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300">
+                                                <select value={editForm.status} onChange={e => setEditForm({...editForm, status: e.target.value})} className="w-full text-sm p-1.5 border rounded border-gray-300 bg-white text-gray-900 focus:ring-primary focus:border-primary focus:outline-none">
                                                     <option value="To be ordered">To be ordered</option>
                                                     <option value="Ordered">Ordered</option>
                                                     <option value="Delivered">Delivered</option>
