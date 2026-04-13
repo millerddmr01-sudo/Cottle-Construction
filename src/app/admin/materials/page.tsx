@@ -94,26 +94,36 @@ export default function MaterialsAdminPage() {
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`Are you sure you want to delete ${name}? This will remove it from the catalog, but won't affect existing projects that used it.`)) return;
 
-        const { error } = await supabase
-            .from("material_catalog")
-            .delete()
-            .eq("id", id);
+        try {
+            const { error } = await supabase
+                .from("material_catalog")
+                .delete()
+                .eq("id", id);
 
-        if (error) {
-            alert("Error deleting material: " + error.message);
-        } else {
-            setMaterials(materials.filter(m => m.id !== id));
+            if (error) {
+                alert("Error deleting material: " + error.message);
+            } else {
+                setMaterials(materials.filter(m => m.id !== id));
+            }
+        } catch (err: any) {
+            alert("Exception tracking delete: " + err.message);
         }
     };
 
     const startEditing = (item: any) => {
-        setEditingId(item.id);
-        setEditMaterial({
-            material_name: item.material_name,
-            default_unit_cost: item.default_unit_cost.toString(),
-            default_unit_measure: item.default_unit_measure,
-            source: item.source || ""
-        });
+        if (!item.id) return;
+        try {
+            setEditingId(item.id);
+            setEditMaterial({
+                material_name: item.material_name || "",
+                default_unit_cost: typeof item.default_unit_cost !== 'undefined' && item.default_unit_cost !== null ? item.default_unit_cost.toString() : "0",
+                default_unit_measure: item.default_unit_measure || "Ea",
+                source: item.source || ""
+            });
+        } catch (err) {
+            console.error("Error starting edit:", err);
+            alert("Could not edit this item. Its data may be malformed.");
+        }
     };
 
     const cancelEditing = () => {
@@ -123,23 +133,29 @@ export default function MaterialsAdminPage() {
     const handleSaveEdit = async () => {
         if (!editingId) return;
 
-        const { data, error } = await supabase
-            .from("material_catalog")
-            .update({
-                material_name: editMaterial.material_name,
-                default_unit_cost: parseFloat(editMaterial.default_unit_cost) || 0,
-                default_unit_measure: editMaterial.default_unit_measure,
-                source: editMaterial.source || null
-            })
-            .eq("id", editingId)
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from("material_catalog")
+                .update({
+                    material_name: editMaterial.material_name,
+                    default_unit_cost: parseFloat(editMaterial.default_unit_cost) || 0,
+                    default_unit_measure: editMaterial.default_unit_measure,
+                    source: editMaterial.source || null
+                })
+                .eq("id", editingId)
+                .select()
+                .single();
 
-        if (error) {
-            alert("Error updating material: " + error.message);
-        } else if (data) {
-            setMaterials(materials.map(m => m.id === editingId ? data : m).sort((a, b) => a.material_name.localeCompare(b.material_name)));
-            setEditingId(null);
+            if (error) {
+                alert("Error updating material: " + error.message);
+            } else if (data) {
+                setMaterials(materials.map(m => m.id === editingId ? data : m).sort((a, b) => a.material_name.localeCompare(b.material_name)));
+                setEditingId(null);
+            } else {
+                alert("Item could not be updated. You may not have permission.");
+            }
+        } catch (err: any) {
+            alert("Exception executing update: " + err.message);
         }
     };
 

@@ -94,27 +94,36 @@ export default function EquipmentAdminPage() {
     const handleDelete = async (id: string, name: string) => {
         if (!confirm(`Are you sure you want to delete ${name}? This will remove it from the catalog, but won't affect existing projects that used it.`)) return;
 
-        const { error } = await supabase
-            .from("equipment_catalog")
-            .delete()
-            .eq("id", id);
+        try {
+            const { error } = await supabase
+                .from("equipment_catalog")
+                .delete()
+                .eq("id", id);
 
-        if (error) {
-            alert("Error deleting equipment: " + error.message);
-        } else {
-            setEquipment(equipment.filter(e => e.id !== id));
+            if (error) {
+                alert("Error deleting equipment: " + error.message);
+            } else {
+                setEquipment(equipment.filter(e => e.id !== id));
+            }
+        } catch (err: any) {
+            alert("Exception tracking delete: " + err.message);
         }
     };
 
     const startEditing = (item: any) => {
         if (!item.id) return; // Prevent editing items without ID
-        setEditingId(item.id);
-        setEditEquipment({
-            equipment_name: item.equipment_name,
-            default_unit_cost: item.default_unit_cost.toString(),
-            default_duration_unit: item.default_duration_unit,
-            source: item.source || ""
-        });
+        try {
+            setEditingId(item.id);
+            setEditEquipment({
+                equipment_name: item.equipment_name || "",
+                default_unit_cost: typeof item.default_unit_cost !== 'undefined' && item.default_unit_cost !== null ? item.default_unit_cost.toString() : "0",
+                default_duration_unit: item.default_duration_unit || "Day",
+                source: item.source || ""
+            });
+        } catch (err) {
+            console.error("Error starting edit:", err);
+            alert("Could not edit this item. Its data may be malformed.");
+        }
     };
 
     const cancelEditing = () => {
@@ -124,23 +133,29 @@ export default function EquipmentAdminPage() {
     const handleSaveEdit = async () => {
         if (!editingId) return;
 
-        const { data, error } = await supabase
-            .from("equipment_catalog")
-            .update({
-                equipment_name: editEquipment.equipment_name,
-                default_unit_cost: parseFloat(editEquipment.default_unit_cost) || 0,
-                default_duration_unit: editEquipment.default_duration_unit,
-                source: editEquipment.source || null
-            })
-            .eq("id", editingId)
-            .select()
-            .single();
+        try {
+            const { data, error } = await supabase
+                .from("equipment_catalog")
+                .update({
+                    equipment_name: editEquipment.equipment_name,
+                    default_unit_cost: parseFloat(editEquipment.default_unit_cost) || 0,
+                    default_duration_unit: editEquipment.default_duration_unit,
+                    source: editEquipment.source || null
+                })
+                .eq("id", editingId)
+                .select()
+                .single();
 
-        if (error) {
-            alert("Error updating equipment: " + error.message);
-        } else if (data) {
-            setEquipment(equipment.map(e => e.id === editingId ? data : e).sort((a, b) => a.equipment_name.localeCompare(b.equipment_name)));
-            setEditingId(null);
+            if (error) {
+                alert("Error updating equipment: " + error.message);
+            } else if (data) {
+                setEquipment(equipment.map(e => e.id === editingId ? data : e).sort((a, b) => a.equipment_name.localeCompare(b.equipment_name)));
+                setEditingId(null);
+            } else {
+                alert("Item could not be updated. You may not have permission.");
+            }
+        } catch (err: any) {
+            alert("Exception executing update: " + err.message);
         }
     };
 
