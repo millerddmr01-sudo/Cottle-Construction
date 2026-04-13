@@ -15,6 +15,20 @@ export default function AdminCustomersPage() {
     const [loading, setLoading] = useState(true);
     const [selectedCustomer, setSelectedCustomer] = useState<any | null>(null);
 
+    // Customer Creation State
+    const [creating, setCreating] = useState(false);
+    const [createError, setCreateError] = useState<string | null>(null);
+    const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [newCustForm, setNewCustForm] = useState({
+        email: "", password: "", fullName: "", companyName: "", phoneNumber: ""
+    });
+
+    // Customer Edit State
+    const [editingId, setEditingId] = useState<string | null>(null);
+    const [editCustForm, setEditCustForm] = useState({
+        full_name: "", company_name: "", phone_number: ""
+    });
+
     // Customer Details Data
     const [docs, setDocs] = useState<any[]>([]);
     const [invoices, setInvoices] = useState<any[]>([]);
@@ -73,6 +87,102 @@ export default function AdminCustomersPage() {
         checkAdmin();
         return () => { isMounted = false; };
     }, [router, supabase]);
+
+    const handleCreateCustomer = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setCreating(true);
+        setCreateError(null);
+        setSuccessMessage(null);
+
+        try {
+            const response = await fetch("/api/admin/create-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    email: newCustForm.email,
+                    password: newCustForm.password,
+                    fullName: newCustForm.fullName,
+                    companyName: newCustForm.companyName,
+                    phoneNumber: newCustForm.phoneNumber,
+                    accountType: "customer",
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) throw new Error(data.error || "Failed to create customer");
+
+            setSuccessMessage(`Successfully created account for ${newCustForm.email}`);
+
+            const createdCustomer = {
+                id: data.user.id,
+                email: newCustForm.email,
+                full_name: newCustForm.fullName,
+                company_name: newCustForm.companyName || null,
+                phone_number: newCustForm.phoneNumber || null,
+                role: "customer",
+            };
+            setCustomers(prev => [...prev, createdCustomer].sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "")));
+
+            setNewCustForm({ email: "", password: "", fullName: "", companyName: "", phoneNumber: "" });
+        } catch (err: any) {
+            setCreateError(err.message);
+        } finally {
+            setCreating(false);
+        }
+    };
+
+    const handleDeleteCustomer = async (id: string, name: string) => {
+        if (!confirm(`Are you absolutely sure you want to delete customer ${name}? This will permanently remove their access, documents, and invoices.`)) return;
+
+        try {
+            const res = await fetch("/api/admin/delete-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: id })
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error);
+
+            setCustomers(customers.filter(c => c.id !== id));
+        } catch (err: any) {
+            alert("Error deleting customer: " + err.message);
+        }
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingId) return;
+        try {
+            const { data, error } = await supabase
+                .from("user_profiles")
+                .update({
+                    full_name: editCustForm.full_name,
+                    company_name: editCustForm.company_name,
+                    phone_number: editCustForm.phone_number
+                })
+                .eq("id", editingId)
+                .select()
+                .single();
+
+            if (error) {
+                alert("Error updating customer: " + error.message);
+            } else if (data) {
+                setCustomers(customers.map(c => c.id === editingId ? data : c).sort((a, b) => (a.full_name || "").localeCompare(b.full_name || "")));
+                setEditingId(null);
+            }
+        } catch (err: any) {
+            alert("Exception executing update: " + err.message);
+        }
+    };
+
+    const startEditing = (cust: any) => {
+        setEditingId(cust.id);
+        setEditCustForm({
+            full_name: cust.full_name || "",
+            company_name: cust.company_name || "",
+            phone_number: cust.phone_number || ""
+        });
+    };
 
     const handleSelectCustomer = async (cust: any) => {
         setSelectedCustomer(cust);
@@ -214,36 +324,127 @@ export default function AdminCustomersPage() {
                             </Link>
                         </div>
                         <h1 className="text-3xl font-extrabold text-secondary mb-2">Manage Customers</h1>
-                        <p className="text-gray-600">Select a customer to upload documents and issue invoices.</p>
+                        <p className="text-gray-600">Register new customers, edit profiles, or select a customer to manage their documents and invoices.</p>
+                    </div>
+
+                    {/* Create Customer Account Form */}
+                    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-8">
+                        <div className="border-b border-gray-200 px-6 py-4 bg-gray-50/50">
+                            <h2 className="text-xl font-bold text-gray-900 flex items-center gap-2"><Plus size={20} className="text-primary"/> Add New Customer</h2>
+                        </div>
+                        <div className="p-6">
+                            <form onSubmit={handleCreateCustomer} className="space-y-6">
+                                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Full Name <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="text" required value={newCustForm.fullName} onChange={e => setNewCustForm({ ...newCustForm, fullName: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Email Address <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="email" required value={newCustForm.email} onChange={e => setNewCustForm({ ...newCustForm, email: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Temporary Password <span className="text-red-500">*</span></label>
+                                        <div className="mt-1">
+                                            <input type="text" required minLength={6} value={newCustForm.password} onChange={e => setNewCustForm({ ...newCustForm, password: e.target.value })} placeholder="Min 6 characters" className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Company Name</label>
+                                        <div className="mt-1">
+                                            <input type="text" value={newCustForm.companyName} onChange={e => setNewCustForm({ ...newCustForm, companyName: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700">Phone Number</label>
+                                        <div className="mt-1">
+                                            <input type="text" value={newCustForm.phoneNumber} onChange={e => setNewCustForm({ ...newCustForm, phoneNumber: e.target.value })} className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary focus:border-primary sm:text-sm text-black" />
+                                        </div>
+                                    </div>
+                                </div>
+                                {createError && <div className="p-3 bg-red-50 text-red-700 rounded-md text-sm border border-red-200">{createError}</div>}
+                                {successMessage && <div className="p-3 bg-green-50 text-green-700 rounded-md text-sm border border-green-200">{successMessage}</div>}
+                                <div className="flex justify-end pt-2">
+                                    <button type="submit" disabled={creating} className="flex justify-center items-center py-2 px-6 border-2 border-primary rounded-md shadow-sm text-sm font-bold text-white bg-primary hover:bg-primary/90 transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary disabled:opacity-50">
+                                        {creating ? <Loader2 size={16} className="animate-spin mr-2" /> : null} {creating ? "Creating..." : "Create Account"}
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
 
                     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
                         {customers.length === 0 ? (
                             <div className="p-12 text-center text-gray-500 italic">No customers found in the system.</div>
                         ) : (
-                            <ul className="divide-y divide-gray-200">
-                                {customers.map(cust => (
-                                    <li key={cust.id}>
-                                        <button
-                                            onClick={() => handleSelectCustomer(cust)}
-                                            className="w-full text-left px-6 py-4 hover:bg-gray-50 transition-colors flex justify-between items-center group"
-                                        >
-                                            <div>
-                                                <h3 className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
-                                                    {cust.full_name || cust.email}
-                                                </h3>
-                                                <div className="text-sm text-gray-500 mt-1 flex gap-4">
-                                                    <span>{cust.email}</span>
-                                                    {cust.company_name && <span>• {cust.company_name}</span>}
-                                                </div>
-                                            </div>
-                                            <div className="text-primary opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1 font-semibold text-sm">
-                                                Manage <ChevronLeft size={16} className="rotate-180" />
-                                            </div>
-                                        </button>
-                                    </li>
-                                ))}
-                            </ul>
+                            <div className="overflow-x-auto">
+                                <table className="min-w-full divide-y divide-gray-200">
+                                    <thead className="bg-gray-50">
+                                        <tr>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer Details</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                                            <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                                            <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="bg-white divide-y divide-gray-200">
+                                        {customers.map(cust => (
+                                            editingId === cust.id ? (
+                                                <tr key={`edit-${cust.id}`} className="bg-blue-50">
+                                                    <td className="px-6 py-4 whitespace-nowrap">
+                                                        <div className="font-bold text-gray-900 text-sm mb-1">
+                                                            <input type="text" value={editCustForm.full_name} onChange={e => setEditCustForm({ ...editCustForm, full_name: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Full Name" />
+                                                        </div>
+                                                        <div className="text-sm text-gray-500">{cust.email} <span className="italic text-xs ml-1">(Cannot edit email inline)</span></div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <input type="text" value={editCustForm.company_name} onChange={e => setEditCustForm({ ...editCustForm, company_name: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Company Name" />
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm">
+                                                        <input type="text" value={editCustForm.phone_number} onChange={e => setEditCustForm({ ...editCustForm, phone_number: e.target.value })} className="w-full px-2 py-1 border border-blue-300 rounded text-sm text-black" placeholder="Phone Number" />
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-2">
+                                                            <button onClick={handleSaveEdit} className="text-green-600 hover:text-green-800 p-1.5 bg-green-100 hover:bg-green-200 rounded transition-colors"><CheckCircle size={18} /></button>
+                                                            <button onClick={() => setEditingId(null)} className="text-gray-500 hover:text-gray-700 p-1.5 bg-gray-200 hover:bg-gray-300 rounded transition-colors"><XCircle size={18} /></button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ) : (
+                                                <tr key={cust.id} className="hover:bg-gray-50 transition-colors group">
+                                                    <td className="px-6 py-4">
+                                                        <div className="font-bold text-gray-900 group-hover:text-primary transition-colors text-lg">{cust.full_name || cust.email}</div>
+                                                        <div className="text-sm text-gray-500 mt-0.5">{cust.email}</div>
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                        {cust.company_name || <span className="text-gray-400 italic">None</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                                                        {cust.phone_number || <span className="text-gray-400 italic">None</span>}
+                                                    </td>
+                                                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div className="flex items-center justify-end gap-4">
+                                                            <button onClick={() => handleSelectCustomer(cust)} className="text-primary hover:text-primary/80 font-bold flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-md hover:bg-primary/20 transition-colors">
+                                                                Manage <ChevronLeft size={16} className="rotate-180" />
+                                                            </button>
+                                                            <button onClick={() => startEditing(cust)} className="text-blue-500 hover:text-blue-700" title="Quick Edit Profile">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+                                                            </button>
+                                                            <button onClick={() => handleDeleteCustomer(cust.id, cust.full_name || cust.email)} className="text-red-500 hover:text-red-700" title="Delete Customer">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>
+                                                            </button>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         )}
                     </div>
                 </div>

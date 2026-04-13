@@ -4,7 +4,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { email, password, fullName, accountType } = body;
+        const { email, password, fullName, accountType, companyName, phoneNumber } = body;
 
         if (!email || !password || !fullName || !accountType) {
             return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -16,10 +16,12 @@ export async function POST(request: Request) {
         const { data, error } = await adminAuthClient.createUser({
             email,
             password,
-            email_confirm: true, // Auto-confirm the employee's email
+            email_confirm: true, // Auto-confirm the email
             user_metadata: {
                 full_name: fullName,
                 role: accountType, // Triggers the db function to set role in user_profiles
+                company_name: companyName || null,
+                phone_number: phoneNumber || null,
             },
         });
 
