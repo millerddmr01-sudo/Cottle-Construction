@@ -78,7 +78,7 @@ export default function ChecklistDashboardPage() {
                 const { data: empData } = await supabase
                     .from("user_profiles")
                     .select("id, full_name")
-                    .in("role", ["employee", "foreman"])
+                    .in("role", ["employee", "foreman", "admin"])
                     .order("full_name", { ascending: true });
                 setEmployees(empData || []);
             }

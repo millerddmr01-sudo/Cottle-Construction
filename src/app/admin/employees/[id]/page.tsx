@@ -19,7 +19,7 @@ export default function AdminEmployeeDetailPage() {
 
     // Upload State
     const [uploading, setUploading] = useState(false);
-    const [uploadForm, setUploadForm] = useState({ document_type: "osha_10", notes: "", expiration_date: "", file: null as File | null });
+    const [uploadForm, setUploadForm] = useState({ document_type: "OSHA 10", notes: "", expiration_date: "", file: null as File | null });
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Editing Status State
@@ -87,35 +87,40 @@ export default function AdminEmployeeDetailPage() {
         if (!uploadForm.file) return;
 
         setUploading(true);
-        const fileExt = uploadForm.file.name.split('.').pop();
-        const fileName = `${employeeId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
+        try {
+            const fileExt = uploadForm.file.name.split('.').pop();
+            const fileName = `${employeeId}/${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
 
-        // 1. Upload to Supabase Storage
-        const { error: uploadError } = await supabase.storage.from('employee_files').upload(fileName, uploadForm.file);
+            // 1. Upload to Supabase Storage
+            const { error: uploadError } = await supabase.storage.from('employee_files').upload(fileName, uploadForm.file);
 
-        if (uploadError) {
-            alert("Error uploading file to storage: " + uploadError.message);
-            setUploading(false); return;
+            if (uploadError) {
+                alert("Error uploading file to storage: " + uploadError.message);
+                return;
+            }
+
+            // 2. Insert record
+            const { data, error: dbError } = await supabase.from("employee_documents").insert({
+                employee_id: employeeId,
+                document_type: uploadForm.document_type,
+                notes: uploadForm.notes,
+                expiration_date: uploadForm.expiration_date || null,
+                file_url: fileName,
+                status: "approved" // Admins auto-approve their own uploads
+            }).select().single();
+
+            if (dbError) {
+                alert("Error saving record: " + dbError.message);
+            } else {
+                setDocuments([data, ...documents]);
+                setUploadForm({ document_type: "OSHA 10", notes: "", expiration_date: "", file: null });
+                if (fileInputRef.current) fileInputRef.current.value = "";
+            }
+        } catch (err: any) {
+            alert("An unexpected error occurred: " + err.message);
+        } finally {
+            setUploading(false);
         }
-
-        // 2. Insert record
-        const { data, error: dbError } = await supabase.from("employee_documents").insert({
-            employee_id: employeeId,
-            document_type: uploadForm.document_type,
-            notes: uploadForm.notes,
-            expiration_date: uploadForm.expiration_date || null,
-            file_url: fileName,
-            status: "approved" // Admins auto-approve their own uploads
-        }).select().single();
-
-        if (dbError) {
-            alert("Error saving record: " + dbError.message);
-        } else {
-            setDocuments([data, ...documents]);
-            setUploadForm({ document_type: "osha_10", notes: "", expiration_date: "", file: null });
-            if (fileInputRef.current) fileInputRef.current.value = "";
-        }
-        setUploading(false);
     };
 
     const handleDeleteDoc = async (id: string, fileUrl: string) => {
@@ -238,25 +243,26 @@ export default function AdminEmployeeDetailPage() {
                                 <div className="md:col-span-2 flex flex-col sm:flex-row gap-4">
                                     <div className="flex-1">
                                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Select File <span className="text-red-500">*</span></label>
-                                        <input type="file" required ref={fileInputRef} onChange={handleFileSelect} className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
+                                        <input type="file" required ref={fileInputRef} onChange={handleFileSelect} className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 font-medium file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20" />
                                     </div>
                                     <div className="w-full sm:w-1/3">
                                         <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Document Type</label>
-                                        <select value={uploadForm.document_type} onChange={e => setUploadForm({ ...uploadForm, document_type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm bg-white">
-                                            <option value="osha_10">OSHA 10</option>
-                                            <option value="osha_30">OSHA 30</option>
-                                            <option value="w4_form">W-4 Form</option>
-                                            <option value="i9_form">I-9 Form</option>
-                                            <option value="cpr_first_aid">CPR / First Aid</option>
-                                            <option value="equipment_cert">Equipment Certification</option>
-                                            <option value="direct_deposit">Direct Deposit Form</option>
-                                            <option value="general">General / Other</option>
-                                        </select>
+                                        <input type="text" list="document_types" value={uploadForm.document_type} onChange={e => setUploadForm({ ...uploadForm, document_type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium bg-white" placeholder="Select or type..." />
+                                        <datalist id="document_types">
+                                            <option value="OSHA 10" />
+                                            <option value="OSHA 30" />
+                                            <option value="W-4 Form" />
+                                            <option value="I-9 Form" />
+                                            <option value="CPR / First Aid" />
+                                            <option value="Equipment Certification" />
+                                            <option value="Direct Deposit Form" />
+                                            <option value="General / Other" />
+                                        </datalist>
                                     </div>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Expiration Date (If Applicable)</label>
-                                    <input type="date" value={uploadForm.expiration_date} onChange={e => setUploadForm({ ...uploadForm, expiration_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm" />
+                                    <input type="date" value={uploadForm.expiration_date} onChange={e => setUploadForm({ ...uploadForm, expiration_date: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium" />
                                 </div>
                                 <div className="flex items-end">
                                     <button type="submit" disabled={uploading || !uploadForm.file} className="w-full py-2 bg-primary text-white font-bold rounded hover:bg-primary/90 disabled:opacity-50 flex justify-center items-center gap-2">

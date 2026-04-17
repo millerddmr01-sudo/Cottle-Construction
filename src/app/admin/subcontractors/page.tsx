@@ -1,10 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ChevronLeft, Loader2, FileText, CheckCircle, Clock, XCircle, Download } from "lucide-react";
+import { ChevronLeft, Loader2, FileText, CheckCircle, Clock, XCircle, Download, Upload } from "lucide-react";
 
 export default function AdminSubcontractorsPage() {
     const router = useRouter();
@@ -33,6 +33,16 @@ export default function AdminSubcontractorsPage() {
     const [docs, setDocs] = useState<any[]>([]);
     const [invoices, setInvoices] = useState<any[]>([]);
     const [detailsLoading, setDetailsLoading] = useState(false);
+
+    // Upload State - Documents
+    const [uploadingDoc, setUploadingDoc] = useState(false);
+    const [docUploadForm, setDocUploadForm] = useState({ document_type: "w9", description: "", file: null as File | null });
+    const docInputRef = useRef<HTMLInputElement>(null);
+
+    // Upload State - Invoices
+    const [uploadingInvoice, setUploadingInvoice] = useState(false);
+    const [invoiceUploadForm, setInvoiceUploadForm] = useState({ invoice_number: "", amount: "", description: "", file: null as File | null });
+    const invoiceInputRef = useRef<HTMLInputElement>(null);
 
     useEffect(() => {
         let isMounted = true;
@@ -221,6 +231,84 @@ export default function AdminSubcontractorsPage() {
         }
     };
 
+    const handleUploadDoc = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!docUploadForm.file || !selectedSub) return;
+        setUploadingDoc(true);
+
+        try {
+            const fileName = `${selectedSub.id}/${Date.now()}_${docUploadForm.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const { error: uploadError, data: uploadData } = await supabase.storage.from("subcontractor_files").upload(fileName, docUploadForm.file);
+
+            if (uploadError) {
+                alert(`Upload failed: ${uploadError.message}`);
+                return;
+            }
+
+            const { data, error: dbError } = await supabase.from("subcontractor_documents").insert({
+                user_id: selectedSub.id,
+                document_type: docUploadForm.document_type,
+                description: docUploadForm.description || ((docUploadForm.document_type === "w9" ? "W-9 Form" : docUploadForm.document_type === "coi" ? "Certificate of Insurance" : docUploadForm.file.name)),
+                file_url: uploadData.path
+            }).select().single();
+
+            if (dbError) {
+                alert(`Database error: ${dbError.message}`);
+            } else {
+                setDocs([data, ...docs]);
+                setDocUploadForm({ document_type: "w9", description: "", file: null });
+                if (docInputRef.current) docInputRef.current.value = "";
+            }
+        } catch (err: any) {
+            alert("Exception uploading document: " + err.message);
+        } finally {
+            setUploadingDoc(false);
+        }
+    };
+
+    const handleUploadInvoice = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!invoiceUploadForm.file || !selectedSub) return;
+
+        const numAmount = parseFloat(invoiceUploadForm.amount.replace(/[^0-9.]/g, ''));
+        if (isNaN(numAmount) || numAmount <= 0) {
+            alert("Please enter a valid invoice amount.");
+            return;
+        }
+
+        setUploadingInvoice(true);
+        try {
+            const fileName = `${selectedSub.id}/invoices/${Date.now()}_${invoiceUploadForm.file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
+            const { error: uploadError, data: uploadData } = await supabase.storage.from("subcontractor_files").upload(fileName, invoiceUploadForm.file);
+
+            if (uploadError) {
+                alert(`File upload failed: ${uploadError.message}`);
+                return;
+            }
+
+            const { data, error: dbError } = await supabase.from("subcontractor_invoices").insert({
+                user_id: selectedSub.id,
+                invoice_number: invoiceUploadForm.invoice_number,
+                description: invoiceUploadForm.description || null,
+                amount: numAmount,
+                status: 'approved', // Admin uploads are automatically approved
+                file_url: uploadData.path
+            }).select().single();
+
+            if (dbError) {
+                alert(`Database error: ${dbError.message}`);
+            } else {
+                setInvoices([data, ...invoices]);
+                setInvoiceUploadForm({ invoice_number: "", amount: "", description: "", file: null });
+                if (invoiceInputRef.current) invoiceInputRef.current.value = "";
+            }
+        } catch (err: any) {
+            alert("Exception uploading invoice: " + err.message);
+        } finally {
+            setUploadingInvoice(false);
+        }
+    };
+
     if (isAdmin === null || loading) {
         return <div className="p-12 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2" />Loading admin view...</div>;
     }
@@ -398,6 +486,33 @@ export default function AdminSubcontractorsPage() {
                             <div className="border-b border-gray-200 px-6 py-4 bg-gray-50/50">
                                 <h2 className="text-xl font-bold text-gray-900">Invoices</h2>
                             </div>
+
+                            {/* Admin Upload Invoice */}
+                            <div className="p-6 border-b border-gray-200 bg-white">
+                                <form onSubmit={handleUploadInvoice} className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Invoice Number</label>
+                                        <input type="text" required value={invoiceUploadForm.invoice_number} onChange={e => setInvoiceUploadForm({ ...invoiceUploadForm, invoice_number: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium focus:ring-primary focus:border-primary" placeholder="INV-123" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Amount ($)</label>
+                                        <input type="number" step="0.01" required value={invoiceUploadForm.amount} onChange={e => setInvoiceUploadForm({ ...invoiceUploadForm, amount: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium focus:ring-primary focus:border-primary" placeholder="0.00" />
+                                    </div>
+                                    <div className="lg:col-span-2">
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Description (Optional)</label>
+                                        <input type="text" value={invoiceUploadForm.description} onChange={e => setInvoiceUploadForm({ ...invoiceUploadForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium focus:ring-primary focus:border-primary" placeholder="Description" />
+                                    </div>
+                                    <div className="lg:col-span-3">
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Select File</label>
+                                        <input type="file" required ref={invoiceInputRef} onChange={e => setInvoiceUploadForm({ ...invoiceUploadForm, file: e.target.files?.[0] || null })} className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 font-medium file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20 bg-white" />
+                                    </div>
+                                    <div className="lg:col-span-1">
+                                        <button type="submit" disabled={uploadingInvoice || !invoiceUploadForm.file} className="w-full py-2 bg-primary text-white font-bold rounded-md hover:bg-primary/90 disabled:opacity-50 flex justify-center items-center gap-2 transition-colors">
+                                            {uploadingInvoice ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />} Upload Invoice
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                             {invoices.length === 0 ? (
                                 <div className="p-6 text-gray-500 italic text-sm">No invoices submitted.</div>
                             ) : (
@@ -452,6 +567,38 @@ export default function AdminSubcontractorsPage() {
                                     </table>
                                 </div>
                             )}
+                        </div>
+
+                        {/* COMPLIANCE & GENERAL DOCS UPLOADER */}
+                        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+                            <div className="border-b border-gray-200 px-6 py-4 bg-gray-50/50">
+                                <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2"><FileText size={20} className="text-primary"/> Upload Documents</h2>
+                            </div>
+                            <div className="p-6">
+                                <form onSubmit={handleUploadDoc} className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+                                    <div>
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Document Type</label>
+                                        <select value={docUploadForm.document_type} onChange={e => setDocUploadForm({ ...docUploadForm, document_type: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium bg-white focus:ring-primary focus:border-primary">
+                                            <option value="w9">W-9 Form</option>
+                                            <option value="coi">Certificate of Insurance (COI)</option>
+                                            <option value="general">General Document</option>
+                                        </select>
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Description (Optional)</label>
+                                        <input type="text" value={docUploadForm.description} onChange={e => setDocUploadForm({ ...docUploadForm, description: e.target.value })} className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm text-gray-900 font-medium focus:ring-primary focus:border-primary" placeholder="Description of file..." />
+                                    </div>
+                                    <div className="md:col-span-2">
+                                        <label className="block text-xs font-bold text-gray-700 uppercase mb-1">Select File</label>
+                                        <input type="file" required ref={docInputRef} onChange={e => setDocUploadForm({ ...docUploadForm, file: e.target.files?.[0] || null })} className="w-full px-3 py-1.5 border border-gray-300 rounded-md text-sm text-gray-900 font-medium file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:bg-primary/10 file:text-primary hover:file:bg-primary/20 bg-white" />
+                                    </div>
+                                    <div className="md:col-span-1">
+                                        <button type="submit" disabled={uploadingDoc || !docUploadForm.file} className="w-full py-2 bg-primary text-white font-bold rounded-md hover:bg-primary/90 disabled:opacity-50 flex justify-center items-center gap-2 transition-colors">
+                                            {uploadingDoc ? <Loader2 className="animate-spin" size={16} /> : <Upload size={16} />} Upload Document
+                                        </button>
+                                    </div>
+                                </form>
+                            </div>
                         </div>
 
                         {/* COMPLIANCE & GENERAL DOCS */}

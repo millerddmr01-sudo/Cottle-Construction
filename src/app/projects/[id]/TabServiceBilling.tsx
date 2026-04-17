@@ -28,7 +28,7 @@ export default function TabServiceBilling({ projectId, supabase, userRole }: { p
             const { data: empData } = await supabase
                 .from("user_profiles")
                 .select("id, full_name, role, hourly_rate")
-                .in("role", ["employee", "foreman"])
+                .in("role", ["employee", "foreman", "admin"])
                 .order("full_name");
             // Fetch Labor (Project Hours) with Employee Hourly Rate
             const { data: hrData } = await supabase

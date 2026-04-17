@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Loader2, ChevronLeft, Search, UserCircle, HardHat, FileBadge } from "lucide-react";
+import { Loader2, ChevronLeft, Search, UserCircle, HardHat, FileBadge, Trash2 } from "lucide-react";
 
 export default function AdminEmployeesPage() {
     const router = useRouter();
@@ -22,6 +22,7 @@ export default function AdminEmployeesPage() {
     const [creating, setCreating] = useState(false);
     const [createError, setCreateError] = useState<string | null>(null);
     const [successMessage, setSuccessMessage] = useState<string | null>(null);
+    const [deletingId, setDeletingId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchEmployees = async () => {
@@ -45,7 +46,7 @@ export default function AdminEmployeesPage() {
             const { data: employeeData, error } = await supabase
                 .from("user_profiles")
                 .select("*")
-                .in("role", ["employee", "foreman"])
+                .in("role", ["employee", "foreman", "admin"])
                 .order("full_name", { ascending: true });
 
             if (error) {
@@ -58,6 +59,35 @@ export default function AdminEmployeesPage() {
 
         fetchEmployees();
     }, [router, supabase]);
+
+    const handleDeleteEmployee = async (id: string, name: string) => {
+        if (!confirm(`Are you SURE you want to delete ${name}? This action cannot be undone and will remove their access to the system entirely.`)) {
+            return;
+        }
+
+        setDeletingId(id);
+        setCreateError(null);
+        
+        try {
+            const response = await fetch("/api/admin/delete-user", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ userId: id }),
+            });
+
+            if (!response.ok) {
+                const data = await response.json();
+                throw new Error(data.error || "Failed to delete user");
+            }
+
+            setEmployees(prev => prev.filter(emp => emp.id !== id));
+            setSuccessMessage(`Successfully deleted employee: ${name}`);
+        } catch (err: any) {
+            setCreateError(err.message);
+        } finally {
+            setDeletingId(null);
+        }
+    };
 
     const handleCreateEmployee = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -280,12 +310,22 @@ export default function AdminEmployeesPage() {
                                                 <div className="text-sm text-gray-900">{emp.phone_number || <span className="text-gray-400 italic">No phone</span>}</div>
                                             </td>
                                             <td className="px-6 py-4 text-right">
-                                                <Link
-                                                    href={`/admin/employees/${emp.id}`}
-                                                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm font-bold shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
-                                                >
-                                                    <FileBadge size={16} className="text-primary" /> Manage
-                                                </Link>
+                                                <div className="flex justify-end items-center gap-2">
+                                                    <Link
+                                                        href={`/admin/employees/${emp.id}`}
+                                                        className="inline-flex items-center gap-1 px-3 py-1.5 bg-white border border-gray-300 text-gray-700 rounded text-sm font-bold shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                                    >
+                                                        <FileBadge size={16} className="text-primary" /> Manage
+                                                    </Link>
+                                                    <button
+                                                        onClick={() => handleDeleteEmployee(emp.id, emp.full_name || 'Unnamed User')}
+                                                        disabled={deletingId === emp.id}
+                                                        className="p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600 transition-colors rounded border border-transparent hover:border-red-200 disabled:opacity-50"
+                                                        title="Delete Employee"
+                                                    >
+                                                        {deletingId === emp.id ? <Loader2 size={16} className="animate-spin" /> : <Trash2 size={16} />}
+                                                    </button>
+                                                </div>
                                             </td>
                                         </tr>
                                     ))}

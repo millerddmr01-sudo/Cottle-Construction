@@ -22,7 +22,7 @@ export default function TabForemanDaily({ projectId, userRole, userId, supabase 
         let isMounted = true;
         const fetchData = async () => {
             // Fetch Employees
-            const { data: empData } = await supabase.from("user_profiles").select("id, full_name, role").in("role", ["employee", "foreman"]).order("full_name");
+            const { data: empData } = await supabase.from("user_profiles").select("id, full_name, role").in("role", ["employee", "foreman", "admin"]).order("full_name");
             if (isMounted) setEmployees(empData || []);
 
             // Fetch Project Hours

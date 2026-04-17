@@ -69,7 +69,7 @@ export default function TabChecklist({ projectId, userRole, userId, supabase }: 
                 const { data: empData } = await supabase
                     .from("user_profiles")
                     .select("id, full_name, role")
-                    .in("role", ["employee", "foreman"])
+                    .in("role", ["employee", "foreman", "admin"])
                     .order("full_name", { ascending: true });
                 if (isMounted) setEmployees(empData || []);
             }
