@@ -16,6 +16,8 @@ export default function ProjectsDirectory() {
     const [loading, setLoading] = useState(true);
     const [deletingId, setDeletingId] = useState<string | null>(null);
     const [filterType, setFilterType] = useState<"all" | "project" | "bid" | "service">("all");
+    const [customerFilter, setCustomerFilter] = useState("all");
+    const [sortOrder, setSortOrder] = useState<"newest" | "oldest" | "customer-asc">("newest");
 
     // Create Project State
     const [isCreating, setIsCreating] = useState(false);
@@ -256,7 +258,21 @@ export default function ProjectsDirectory() {
         return <div className="p-12 text-center text-gray-500"><Loader2 className="animate-spin inline mr-2" />Loading Projects Directory...</div>;
     }
 
-    const filteredProjects = projects.filter(p => filterType === "all" || p.project_type === filterType);
+    const filteredProjects = projects
+        .filter(p => filterType === "all" || p.project_type === filterType)
+        .filter(p => customerFilter === "all" || p.customer_id === customerFilter)
+        .sort((a, b) => {
+            if (sortOrder === "newest") {
+                return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+            } else if (sortOrder === "oldest") {
+                return new Date(a.created_at || 0).getTime() - new Date(b.created_at || 0).getTime();
+            } else if (sortOrder === "customer-asc") {
+                const nameA = (a.customer?.company_name || a.customer?.full_name || "zzz").toLowerCase();
+                const nameB = (b.customer?.company_name || b.customer?.full_name || "zzz").toLowerCase();
+                return nameA.localeCompare(nameB);
+            }
+            return 0;
+        });
 
     return (
         <div className="min-h-screen bg-gray-50 pt-10 pb-20 px-4">
@@ -338,12 +354,38 @@ export default function ProjectsDirectory() {
                     </div>
                 )}
 
-                {/* Filter Controls */}
-                <div className="flex flex-wrap gap-2 mb-6">
-                    <button onClick={() => setFilterType("all")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "all" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>All Projects</button>
-                    <button onClick={() => setFilterType("project")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "project" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Projects</button>
-                    <button onClick={() => setFilterType("bid")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "bid" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Bids</button>
-                    <button onClick={() => setFilterType("service")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "service" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Service Work</button>
+                {/* Filter & Sort Controls */}
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                    <div className="flex flex-wrap gap-2">
+                        <button onClick={() => setFilterType("all")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "all" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>All Projects</button>
+                        <button onClick={() => setFilterType("project")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "project" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Projects</button>
+                        <button onClick={() => setFilterType("bid")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "bid" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Bids</button>
+                        <button onClick={() => setFilterType("service")} className={`px-4 py-2 rounded-md text-sm font-bold transition-colors ${filterType === "service" ? "bg-primary text-white" : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"}`}>Service Work</button>
+                    </div>
+
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        {(userRole === 'admin' || userRole === 'foreman') && (
+                            <select 
+                                value={customerFilter} 
+                                onChange={e => setCustomerFilter(e.target.value)}
+                                className="bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md px-3 py-2 w-full md:w-auto focus:ring-primary focus:border-primary"
+                            >
+                                <option value="all">All Customers</option>
+                                {customers.map(c => (
+                                    <option key={c.id} value={c.id}>{c.company_name || c.full_name || c.id}</option>
+                                ))}
+                            </select>
+                        )}
+                        <select 
+                            value={sortOrder} 
+                            onChange={e => setSortOrder(e.target.value as any)}
+                            className="bg-white border border-gray-300 text-gray-700 text-sm font-medium rounded-md px-3 py-2 w-full md:w-auto focus:ring-primary focus:border-primary"
+                        >
+                            <option value="newest">Sort: Newest</option>
+                            <option value="oldest">Sort: Oldest</option>
+                            <option value="customer-asc">Sort: Customer (A-Z)</option>
+                        </select>
+                    </div>
                 </div>
 
                 {/* Projects Grid */}

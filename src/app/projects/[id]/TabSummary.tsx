@@ -6,22 +6,25 @@ import { Loader2, Save, Map, Hammer, ClipboardList, FileText, Clock, FileWarning
 export default function TabSummary({ project, userRole, supabase, setProject }: { project: any, userRole: string, supabase: any, setProject: any }) {
     const [saving, setSaving] = useState(false);
     const [status, setStatus] = useState(project.status || "Planning & Estimate");
+    const [customerId, setCustomerId] = useState(project.customer_id || "");
 
     const [materials, setMaterials] = useState<any[]>([]);
     const [equipment, setEquipment] = useState<any[]>([]);
     const [changeOrders, setChangeOrders] = useState<any[]>([]);
     const [dailyReports, setDailyReports] = useState<any[]>([]);
+    const [customers, setCustomers] = useState<any[]>([]);
     const [loadingData, setLoadingData] = useState(true);
 
     useEffect(() => {
         let isMounted = true;
         const fetchAllData = async () => {
             setLoadingData(true);
-            const [matRes, eqRes, coRes, drRes] = await Promise.all([
+            const [matRes, eqRes, coRes, drRes, custRes] = await Promise.all([
                 supabase.from("project_materials").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
                 supabase.from("project_equipment").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
                 supabase.from("project_change_orders").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
-                supabase.from("daily_reports").select("*").eq("project_id", project.id).order("date", { ascending: false })
+                supabase.from("daily_reports").select("*").eq("project_id", project.id).order("date", { ascending: false }),
+                supabase.from("user_profiles").select("id, full_name, company_name").eq("role", "customer").order("full_name", { ascending: true })
             ]);
 
             if (isMounted) {
@@ -29,6 +32,7 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
                 setEquipment(eqRes.data || []);
                 setChangeOrders(coRes.data || []);
                 setDailyReports(drRes.data || []);
+                setCustomers(custRes.data || []);
                 setLoadingData(false);
             }
         };
@@ -37,19 +41,22 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
     }, [project.id, supabase]);
 
     const canEdit = userRole === 'admin' || userRole === 'foreman';
-    const hasChanges = status !== (project.status || "Planning & Estimate");
+    const hasChanges = status !== (project.status || "Planning & Estimate") || customerId !== (project.customer_id || "");
 
     const handleSave = async () => {
         setSaving(true);
         const { data, error } = await supabase
             .from("projects")
-            .update({ status })
+            .update({ 
+                status,
+                customer_id: customerId || null
+            })
             .eq("id", project.id)
-            .select()
+            .select("*, customer:user_profiles(full_name, company_name, email, phone_number)")
             .single();
 
         if (error) {
-            alert("Error saving project status: " + error.message);
+            alert("Error saving project details: " + error.message);
         } else {
             setProject((prev: any) => ({ ...prev, ...data }));
         }
@@ -106,6 +113,25 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
                     ) : (
                         <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100 font-medium">
                             {project.status || "Planning & Estimate"}
+                        </div>
+                    )}
+                </div>
+                <div>
+                    <label className="block text-sm font-bold text-gray-700 mb-2">Assigned Customer</label>
+                    {canEdit ? (
+                        <select
+                            value={customerId}
+                            onChange={(e) => setCustomerId(e.target.value)}
+                            className="w-full px-4 py-2.5 border border-gray-300 rounded-lg text-sm font-medium text-gray-900 bg-white focus:ring-primary focus:border-primary shadow-sm"
+                        >
+                            <option value="">-- No Customer Assigned --</option>
+                            {customers.map((c: any) => (
+                                <option key={c.id} value={c.id}>{c.full_name || c.company_name || c.id}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <div className="p-4 bg-gray-50 rounded-lg text-sm text-gray-700 border border-gray-100 font-medium">
+                            {project.customer ? (project.customer.company_name || project.customer.full_name) : "No Customer Assigned"}
                         </div>
                     )}
                 </div>
