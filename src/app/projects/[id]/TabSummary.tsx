@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Loader2, Save, Map, Hammer, ClipboardList, FileText, Clock, FileWarning, ExternalLink } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Loader2, Save, Map, Hammer, ClipboardList, FileText, Clock, FileWarning, ExternalLink, X } from "lucide-react";
+import { generateAndUploadSOW } from "@/lib/exportSOW";
 
 export default function TabSummary({ project, userRole, supabase, setProject }: { project: any, userRole: string, supabase: any, setProject: any }) {
     const [saving, setSaving] = useState(false);
@@ -13,18 +14,32 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
     const [changeOrders, setChangeOrders] = useState<any[]>([]);
     const [dailyReports, setDailyReports] = useState<any[]>([]);
     const [customers, setCustomers] = useState<any[]>([]);
+    const [photos, setPhotos] = useState<any[]>([]);
+    const [documents, setDocuments] = useState<any[]>([]);
     const [loadingData, setLoadingData] = useState(true);
+
+    // SOW Export State
+    const [isSowDialogOpen, setIsSowDialogOpen] = useState(false);
+    const [generatingSow, setGeneratingSow] = useState(false);
+    const [selectedSowSections, setSelectedSowSections] = useState<string[]>([
+        'general_notes', 'materials', 'equipment', 'change_orders', 'daily_reports'
+    ]);
+    const [selectedSowPhotos, setSelectedSowPhotos] = useState<string[]>([]);
+    
+    // Removed native dialog effect to conditionally render instead
 
     useEffect(() => {
         let isMounted = true;
         const fetchAllData = async () => {
             setLoadingData(true);
-            const [matRes, eqRes, coRes, drRes, custRes] = await Promise.all([
+            const [matRes, eqRes, coRes, drRes, custRes, photosRes, docsRes] = await Promise.all([
                 supabase.from("project_materials").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
                 supabase.from("project_equipment").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
                 supabase.from("project_change_orders").select("*").eq("project_id", project.id).order("created_at", { ascending: true }),
                 supabase.from("daily_reports").select("*").eq("project_id", project.id).order("date", { ascending: false }),
-                supabase.from("user_profiles").select("id, full_name, company_name").eq("role", "customer").order("full_name", { ascending: true })
+                supabase.from("user_profiles").select("id, full_name, company_name").eq("role", "customer").order("full_name", { ascending: true }),
+                supabase.from("project_photos").select("*").eq("project_id", project.id).order("created_at", { ascending: false }),
+                supabase.from("project_documents").select("*").eq("project_id", project.id).order("created_at", { ascending: false })
             ]);
 
             if (isMounted) {
@@ -33,6 +48,9 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
                 setChangeOrders(coRes.data || []);
                 setDailyReports(drRes.data || []);
                 setCustomers(custRes.data || []);
+                setPhotos(photosRes.data || []);
+                setDocuments(docsRes.data || []);
+                setSelectedSowPhotos(photosRes.data?.map((p: any) => p.id) || []);
                 setLoadingData(false);
             }
         };
@@ -63,13 +81,33 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
         setSaving(false);
     };
 
+    const handleSowExport = async () => {
+        setGeneratingSow(true);
+        try {
+            const { data: { user } } = await supabase.auth.getUser();
+            await generateAndUploadSOW(
+                project,
+                { materials, equipment, changeOrders, dailyReports, photos: photos.filter(p => selectedSowPhotos.includes(p.id)), documents },
+                selectedSowSections,
+                supabase,
+                user?.id || project.customer_id
+            );
+            setIsSowDialogOpen(false);
+            alert("SOW generated and saved to Project Documents successfully!");
+        } catch (e: any) {
+            alert("Failed to generate SOW: " + e.message);
+        } finally {
+            setGeneratingSow(false);
+        }
+    };
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
             <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-bold text-gray-900">Project Summary</h2>
                 <div className="flex items-center gap-3">
-                    <button onClick={() => alert("PDF export coming soon!")} className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm font-bold hover:bg-gray-200 transition-colors">
-                        <FileText size={16} /> Export SOW (PDF)
+                    <button onClick={() => setIsSowDialogOpen(true)} className="flex items-center gap-2 px-3 py-1.5 bg-gray-100 text-gray-700 rounded text-sm font-bold hover:bg-gray-200 transition-colors">
+                        <FileText size={16} /> Create SOW
                     </button>
                     {canEdit && hasChanges && (
                         <button onClick={handleSave} disabled={saving} className="flex items-center gap-2 px-3 py-1.5 bg-primary text-white rounded text-sm font-bold hover:bg-primary/90 disabled:opacity-50 transition-colors">
@@ -267,6 +305,94 @@ export default function TabSummary({ project, userRole, supabase, setProject }: 
                         </div>
                     </div>
                 </div>
+            )}
+
+            {/* SOW Export Dialog */}
+            {isSowDialogOpen && (
+                <dialog 
+                    ref={(el) => {
+                        if (el && !el.open) {
+                            el.showModal();
+                        }
+                    }}
+                className="bg-transparent p-0 m-auto rounded-xl backdrop:bg-black/50 open:flex flex-col w-full max-w-md max-h-[90vh]"
+                onClose={() => setIsSowDialogOpen(false)}
+            >
+                <div className="bg-white rounded-xl shadow-xl w-full h-full flex flex-col">
+                    <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+                            <h3 className="font-bold text-lg text-gray-900">Export Statement of Work</h3>
+                            <button onClick={() => setIsSowDialogOpen(false)} className="text-gray-400 hover:text-gray-600">
+                                <X size={20} />
+                            </button>
+                        </div>
+                        <div className="p-6 overflow-y-auto flex-1">
+                            <p className="text-sm text-gray-600 mb-4">Select the sections to include in the SOW PDF. The document will be automatically saved to the project's documents.</p>
+                            
+                            <div className="space-y-3">
+                                {[
+                                    { id: 'general_notes', label: 'Additional Project Details & General Notes' },
+                                    { id: 'materials', label: 'Material Requirements' },
+                                    { id: 'equipment', label: 'Equipment List' },
+                                    { id: 'change_orders', label: 'Change Orders' },
+                                    { id: 'daily_reports', label: 'Daily Reports' }
+                                ].map(section => (
+                                    <div key={section.id} className="flex flex-col gap-2">
+                                        <label className="flex items-center gap-3 p-3 border border-gray-100 rounded-lg cursor-pointer hover:bg-gray-50 transition-colors">
+                                            <input 
+                                                type="checkbox" 
+                                                className="w-4 h-4 text-primary rounded border-gray-300 focus:ring-primary"
+                                                checked={selectedSowSections.includes(section.id)}
+                                                onChange={(e) => {
+                                                    if (e.target.checked) {
+                                                        setSelectedSowSections([...selectedSowSections, section.id]);
+                                                    } else {
+                                                        setSelectedSowSections(selectedSowSections.filter(id => id !== section.id));
+                                                    }
+                                                }}
+                                            />
+                                            <span className="text-sm font-medium text-gray-900">{section.label}</span>
+                                        </label>
+                                        
+                                        {section.id === 'photos' && selectedSowSections.includes('photos') && photos.length > 0 && (
+                                            <div className="ml-8 p-3 border border-gray-100 rounded-lg bg-gray-50 flex flex-col gap-2 max-h-48 overflow-y-auto">
+                                                <p className="text-xs font-bold text-gray-500 uppercase">Select Photos to Include:</p>
+                                                {photos.map(photo => (
+                                                    <label key={photo.id} className="flex items-center gap-2 cursor-pointer">
+                                                        <input 
+                                                            type="checkbox"
+                                                            className="w-3 h-3 text-primary rounded border-gray-300"
+                                                            checked={selectedSowPhotos.includes(photo.id)}
+                                                            onChange={(e) => {
+                                                                if (e.target.checked) {
+                                                                    setSelectedSowPhotos([...selectedSowPhotos, photo.id]);
+                                                                } else {
+                                                                    setSelectedSowPhotos(selectedSowPhotos.filter(id => id !== photo.id));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <span className="text-xs text-gray-700 truncate" title={photo.description || photo.photo_type}>
+                                                            {photo.photo_type.replace('_', ' ')} {photo.description ? `- ${photo.description}` : ''}
+                                                        </span>
+                                                    </label>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                        <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50 rounded-b-xl">
+                            <button onClick={() => setIsSowDialogOpen(false)} disabled={generatingSow} className="px-4 py-2 text-sm font-bold text-gray-600 hover:text-gray-900">Cancel</button>
+                            <button 
+                                onClick={handleSowExport} 
+                                disabled={generatingSow || selectedSowSections.length === 0} 
+                                className="px-4 py-2 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2"
+                            >
+                                {generatingSow ? <><Loader2 className="animate-spin" size={16} /> Generating...</> : "Create PDF"}
+                            </button>
+                        </div>
+                    </div>
+                </dialog>
             )}
         </div>
     );
